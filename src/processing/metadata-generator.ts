@@ -1,5 +1,6 @@
 import type { Conversation, Metadata } from "../types"
 import { extractKeywords, generateTitle, generateSummary, categorizeConversation } from "./local-algorithms"
+import { stripHtml } from "../utils/cleaner"
 
 /**
  * 元数据生成器
@@ -9,9 +10,9 @@ export class MetadataGenerator {
      * 使用本地算法生成元数据
      */
     generateLocal(conversation: Conversation): Metadata {
-        // 合并所有消息文本
+        // 合并所有消息文本并清理 HTML
         const fullText = conversation.messages
-            .map(msg => msg.content)
+            .map(msg => stripHtml(msg.content)) // 清理 HTML 标签
             .join('\n')
 
         // 提取关键词

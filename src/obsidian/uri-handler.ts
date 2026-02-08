@@ -55,7 +55,24 @@ export class ObsidianURIHandler {
                 ? `${this.config.defaultFolder}/${filename}`
                 : filename
 
-            const uri = this.buildURI(filePath, markdown)
+            let uri = this.buildURI(filePath, markdown)
+
+            // 检查 URI 长度限制 (浏览器通常限制 2000-3000 字符)
+            if (uri.length > 2500) {
+                console.warn('⚠️ 内容过长，降级为剪贴板模式')
+                // 仅打开带标题的空笔记
+                uri = this.buildURI(filePath, '')
+
+                // 复制内容到剪贴板
+                await navigator.clipboard.writeText(markdown)
+
+                // 打开 URI
+                window.open(uri, '_blank')
+
+                // 返回 true 但带有特殊标记可能更好，这里先返回 true 让外层提示成功
+                // 实际应该提示用户"内容已复制，请粘贴"
+                return true
+            }
 
             console.log('📝 Obsidian URI:', uri.substring(0, 100) + '...')
 
@@ -65,6 +82,24 @@ export class ObsidianURIHandler {
             return true
         } catch (error) {
             console.error('❌ Obsidian URI导出失败:', error)
+
+            // 如果是因为长度原因导致的失败（再次兜底）
+            if (markdown.length > 1000) {
+                try {
+                    const filename = this.generateFilename(metadata)
+                    const filePath = this.config.defaultFolder
+                        ? `${this.config.defaultFolder}/${filename}`
+                        : filename
+
+                    const uri = this.buildURI(filePath, '')
+                    await navigator.clipboard.writeText(markdown)
+                    window.open(uri, '_blank')
+                    return true
+                } catch (e) {
+                    return false
+                }
+            }
+
             return false
         }
     }
@@ -73,8 +108,8 @@ export class ObsidianURIHandler {
      * 构建 Obsidian URI
      */
     private buildURI(filePath: string, content: string): string {
-        // 手动构建查询字符串，避免 URLSearchParams 将空格编码为 + 号
-        // Obsidian 的 new 动作在处理 content 参数时可能不支持 + 号作为空格
+        // 手动构建查询字符串，使用 standard encoding
+        // Obsidian 需要 %20 而不是 +
         const vault = encodeURIComponent(this.config.vaultName)
         const file = encodeURIComponent(filePath)
         const encodedContent = encodeURIComponent(content)

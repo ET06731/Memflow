@@ -104,37 +104,23 @@ export abstract class BaseAdapter implements IAdapter {
 
             const role = isUser ? 'user' : 'assistant'
 
-            // 提取文本内容，保留换行
-            let content = element.textContent?.trim() || ''
+            // 提取 HTML 内容，以便保留格式（列表、表格、代码块等）
+            // 我们将在构建 Markdown 时处理它
+            let content = element.innerHTML || ''
 
-            // 跳过空内容或太短的内容
-            if (!content || content.length < 5) {
-                return
-            }
+            // 移除可能存在的脚本和样式标签（简单的预处理）
+            content = content.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, "")
+            content = content.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gim, "")
 
-            // 处理代码块
-            if (this.selectors.codeBlock) {
-                const codeBlocks = element.querySelectorAll(this.selectors.codeBlock)
-                codeBlocks.forEach((block) => {
-                    const code = block.textContent || ''
-                    const language = block.className.match(/language-(\w+)/)?.[1] || ''
-                    // 注意：这里简化处理，实际可能需要更复杂的逻辑
-                    if (code && !content.includes('```')) {
-                        content = content.replace(
-                            code,
-                            `\`\`\`${language}\n${code}\n\`\`\``
-                        )
-                    }
-                })
-            }
+            const trimmedContent = content.trim()
 
-            if (content) {
+            if (trimmedContent && trimmedContent.length > 0) {
                 messages.push({
                     role,
-                    content,
+                    content: trimmedContent,
                     timestamp: new Date()
                 })
-                console.log(`  [${index}] ${role}: ${content.substring(0, 50)}...`)
+                // console.log(`  [${index}] ${role}: extracted HTML length ${trimmedContent.length}`)
             }
         })
 

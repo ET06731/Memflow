@@ -70,7 +70,11 @@ async function exportDirect() {
       const success = await handler.exportToObsidian(markdown, metadata)
 
       if (success) {
-        showToast('✅ 已发送到 Obsidian！', 'success')
+        if (markdown.length > 2000) {
+          showToast('📋 内容过长，已复制到剪贴板，请并在Obsidian中粘贴', 'warning')
+        } else {
+          showToast('✅ 已发送到 Obsidian！', 'success')
+        }
       } else {
         // URI失败，降级到下载
         downloadMarkdown(markdown, metadata.title)

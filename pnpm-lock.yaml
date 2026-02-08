@@ -20,6 +20,9 @@ importers:
       turndown:
         specifier: ^7.2.2
         version: 7.2.2
+      turndown-plugin-gfm:
+        specifier: ^1.0.2
+        version: 1.0.2
       zustand:
         specifier: ^5.0.11
         version: 5.0.11(@types/react@18.2.48)(react@18.2.0)
@@ -2891,6 +2894,9 @@ packages:
         optional: true
       typescript:
         optional: true
+
+  turndown-plugin-gfm@1.0.2:
+    resolution: {integrity: sha512-vwz9tfvF7XN/jE0dGoBei3FXWuvll78ohzCZQuOb+ZjWrs3a0XhQVomJEb2Qh4VHTPNRO4GPZh0V7VRbiWwkRg==}
 
   turndown@7.2.2:
     resolution: {integrity: sha512-1F7db8BiExOKxjSMU2b7if62D/XOyQyZbPKq/nUwopfgnHlqXHqQ0lvfUTeUIr1lZJzOPFn43dODyMSIfvWRKQ==}
@@ -6163,6 +6169,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
       - ts-node
+
+  turndown-plugin-gfm@1.0.2: {}
 
   turndown@7.2.2:
     dependencies:

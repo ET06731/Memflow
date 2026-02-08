@@ -1,4 +1,5 @@
 import TurndownService from "turndown"
+import { gfm } from "turndown-plugin-gfm"
 import type { Conversation, Metadata } from "../types"
 
 /**
@@ -15,8 +16,25 @@ export class MarkdownBuilder {
             strongDelimiter: '**'
         })
 
+        // 使用 GFM 插件（支持表格、删除线等）
+        this.turndown.use(gfm)
+
         // 添加自定义规则来保留代码块
         this.turndown.keep(['pre', 'code'])
+
+        // 移除无关的UI元素
+        this.turndown.remove('button')
+        this.turndown.remove('svg')
+        this.turndown.remove('script')
+        this.turndown.remove('style')
+        this.turndown.remove('noscript')
+        // DeepSeek 特定清理
+        this.turndown.remove('.ds-icon')
+        this.turndown.remove('.ds-markdown-copy-button')
+        this.turndown.remove('.ds-icon-button')
+        // 通用清理
+        this.turndown.remove('[aria-label="复制"]')
+        this.turndown.remove('[aria-label="Copy"]')
     }
 
     /**
@@ -79,6 +97,7 @@ status: 🟢 待整理
 
         // 对话内容
         conversation.messages.forEach((msg, index) => {
+            // 将 HTML 转换为 Markdown
             const content = this.formatContent(msg.content)
 
             if (format === 'callout') {
@@ -118,12 +137,17 @@ status: 🟢 待整理
     }
 
     /**
-     * 格式化内容，保留段落和列表结构
+     * 格式化内容：HTML转Markdown -> 清理 -> 格式优化
      */
     private formatContent(content: string): string {
-        // 1. 修复 Turndown 可能产生的 + 列表符号，统一转为 -
-        // 2. 移除多余的空行
-        return content
+        // 1. 如果看起来像 HTML，先转换
+        let md = content
+        if (content.trim().startsWith('<') || content.includes('</div>') || content.includes('</p>')) {
+            md = this.htmlToMarkdown(content)
+        }
+
+        // 2. 修复格式
+        return md
             .replace(/^\+ /gm, '- ') // 将行首的 + 替换为 -
             .replace(/\n{3,}/g, '\n\n') // 限制最大连续空行为2
             .trim()
