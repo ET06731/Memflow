@@ -1,33 +1,85 @@
-This is a [Plasmo extension](https://docs.plasmo.com/) project bootstrapped with [`plasmo init`](https://www.npmjs.com/package/plasmo).
+# Memflow - 流动的记忆
 
-## Getting Started
+从 AI 对话平台导出对话到 Obsidian 知识库的浏览器扩展。
 
-First, run the development server:
+## ✨ 功能特性
+
+- ✅ **DeepSeek 平台支持**：自动检测并提取 DeepSeek 对话
+- ✅ **智能元数据提取**：自动生成标题、关键词、摘要和分类  
+- ✅ **Markdown 格式导出**：包含 YAML frontmatter 和 Obsidian Callouts
+- ✅ **一键导出**：页面右下角浮动按钮
+- 🚧 **即将支持**：ChatGPT、Gemini、Claude、Obsidian 深度集成
+
+## 🚀 快速开始
+
+### 开发环境
 
 ```bash
+# 安装依赖
+pnpm install
+
+# 启动开发服务器
 pnpm dev
-# or
-npm run dev
-```
 
-Open your browser and load the appropriate development build. For example, if you are developing for the chrome browser, using manifest v3, use: `build/chrome-mv3-dev`.
-
-You can start editing the popup by modifying `popup.tsx`. It should auto-update as you make changes. To add an options page, simply add a `options.tsx` file to the root of the project, with a react component default exported. Likewise to add a content page, add a `content.ts` file to the root of the project, importing some module and do some logic, then reload the extension on your browser.
-
-For further guidance, [visit our Documentation](https://docs.plasmo.com/)
-
-## Making production build
-
-Run the following:
-
-```bash
+# 构建生产版本
 pnpm build
-# or
-npm run build
 ```
 
-This should create a production bundle for your extension, ready to be zipped and published to the stores.
+### 在浏览器中加载
 
-## Submit to the webstores
+1. 打开 Chrome 浏览器，访问 `chrome://extensions`
+2. 启用"开发者模式"
+3. 点击"加载已解压的扩展程序"
+4. 选择 `build/chrome-mv3-dev` 目录
 
-The easiest way to deploy your Plasmo extension is to use the built-in [bpp](https://bpp.browser.market) GitHub action. Prior to using this action however, make sure to build your extension and upload the first version to the store to establish the basic credentials. Then, simply follow [this setup instruction](https://docs.plasmo.com/framework/workflows/submit) and you should be on your way for automated submission!
+### 使用方法
+
+1. 访问 DeepSeek (https://chat.deepseek.com)
+2. 进行对话
+3. 点击页面右下角的"导出到 Obsidian"按钮
+4. Markdown 文件将自动下载
+
+## 📁 项目结构
+
+```
+src/
+├── contents/           # Content Scripts
+│   ├── adapters/       # 平台适配器
+│   │   ├── base-adapter.ts
+│   │   ├── deepseek.ts
+│   │   └── index.ts
+│   └── index.tsx       # 主 Content Script（浮动按钮）
+├── processing/         # 处理层
+│   ├── local-algorithms.ts    # 本地算法（关键词提取等）
+│   ├── markdown-builder.ts   # Markdown 构建器
+│   └── metadata-generator.ts # 元数据生成器
+├── types/             # TypeScript 类型定义
+└── config/            # 配置文件
+    ├── selectors.json # DOM 选择器
+    └── prompts.json   # LLM Prompt 模板
+```
+
+## 🛠️ 技术栈
+
+- **框架**: [Plasmo](https://www.plasmo.com/)
+- **语言**: TypeScript
+- **UI**: React
+- **Markdown**: Turndown
+- **状态管理**: Zustand
+
+## 📋 开发路线图
+
+- [x] Phase 0: 环境搭建
+- [/] Phase 1: MVP - DeepSeek 基础导出
+- [ ] Phase 2: 智能增强 - DOM 注入 LLM
+- [ ] Phase 3: 多平台适配
+- [ ] Phase 4: Obsidian 深度集成
+- [ ] Phase 5: 完善与发布
+
+## 🤝 参与贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 📄 许可证
+
+MIT License

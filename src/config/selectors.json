@@ -1,0 +1,22 @@
+{
+    "version": "1.0.1",
+    "lastUpdate": "2026-02-08",
+    "platforms": {
+        "deepseek": {
+            "messageContainer": "div[class*='message'], [role='article'], .chat-item, div[data-message-id]",
+            "userMessage": "[data-role='user'], .user-message, div[class*='user-message'], div[class*='User']",
+            "aiMessage": "[data-role='assistant'], .ai-message, .assistant-message, div[class*='assistant'], div[class*='bot']",
+            "codeBlock": "pre code, .code-block code",
+            "inputBox": "textarea[placeholder*='输入'], textarea[placeholder*='问'], textarea",
+            "sendButton": "button[aria-label='发送'], button[type='submit']",
+            "deleteButton": ".message-actions button[aria-label='删除'], button[aria-label='删除']"
+        },
+        "chatgpt": {
+            "messageContainer": "[data-message-author-role], article",
+            "userMessage": "[data-message-author-role='user']",
+            "aiMessage": "[data-message-author-role='assistant']",
+            "inputBox": "#prompt-textarea",
+            "sendButton": "button[data-testid='send-button']"
+        }
+    }
+}
