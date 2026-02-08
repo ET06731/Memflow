@@ -53,13 +53,7 @@ async function exportDirect() {
       // 未配置，使用下载方式并提示
       downloadMarkdown(markdown, metadata.title)
       showToast('💡 请在扩展设置中配置 Obsidian', 'warning')
-      setTimeout(() => {
-        if (chrome.runtime.openOptionsPage) {
-          chrome.runtime.openOptionsPage()
-        } else {
-          window.open(chrome.runtime.getURL('popup.html'))
-        }
-      }, 1500)
+      showToast('💡 请点击扩展图标配置 Obsidian', 'warning')
       return
     }
 

@@ -258,8 +258,8 @@ function Popup() {
         .form-input {
           width: 100%;
           padding: 12px 14px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.04);
           border-radius: 8px;
           font-family: 'JetBrains Mono', monospace;
           font-size: 13px;
@@ -270,12 +270,12 @@ function Popup() {
         }
         
         .form-input::placeholder {
-          color: #666;
+          color: #555;
         }
         
         .form-input:hover {
-          background: rgba(255, 255, 255, 0.05);
-          border-color: rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.04);
+          border-color: rgba(255, 255, 255, 0.08);
         }
         
         .form-input:focus {
@@ -311,8 +311,8 @@ function Popup() {
         .method-label {
           display: block;
           padding: 14px 12px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.04);
           border-radius: 10px;
           cursor: pointer;
           transition: all 0.3s ease;
@@ -411,8 +411,8 @@ function Popup() {
         
         .help-section {
           padding: 20px 24px;
-          background: rgba(245, 158, 11, 0.03);
-          border-top: 1px solid rgba(245, 158, 11, 0.1);
+          background: rgba(245, 158, 11, 0.02);
+          border-top: 1px solid rgba(245, 158, 11, 0.06);
         }
         
         .help-title {
@@ -451,7 +451,7 @@ function Popup() {
         .footer {
           padding: 14px 24px;
           background: rgba(0, 0, 0, 0.3);
-          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          border-top: 1px solid rgba(255, 255, 255, 0.03);
           font-size: 10px;
           color: #555;
           display: flex;
