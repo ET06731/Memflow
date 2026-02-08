@@ -5,6 +5,7 @@ export interface ObsidianConfig {
     vaultName: string
     defaultFolder: string
     fileNameFormat: string
+    contentFormat: 'callout' | 'web'
     exportMethod: 'uri' | 'download'
 }
 
@@ -72,13 +73,13 @@ export class ObsidianURIHandler {
      * 构建 Obsidian URI
      */
     private buildURI(filePath: string, content: string): string {
-        const params = new URLSearchParams({
-            vault: this.config.vaultName,
-            file: filePath,
-            content: content
-        })
+        // 手动构建查询字符串，避免 URLSearchParams 将空格编码为 + 号
+        // Obsidian 的 new 动作在处理 content 参数时可能不支持 + 号作为空格
+        const vault = encodeURIComponent(this.config.vaultName)
+        const file = encodeURIComponent(filePath)
+        const encodedContent = encodeURIComponent(content)
 
-        return `obsidian://new?${params.toString()}`
+        return `obsidian://new?vault=${vault}&file=${file}&content=${encodedContent}`
     }
 
     /**

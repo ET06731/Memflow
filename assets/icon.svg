@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <!-- Gradient for the main icon -->
+    <linearGradient id="amberGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="50%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+    
+    <!-- Glow filter -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="#0a0a0f" stroke="url(#amberGradient)" stroke-width="2"/>
+  
+  <!-- Chat bubble on the left (AI conversation) -->
+  <path d="M28 44 
+           L28 64 
+           Q28 68 32 68 
+           L42 68 
+           L42 78 
+           L52 68 
+           L60 68 
+           Q64 68 64 64 
+           L64 44 
+           Q64 40 60 40 
+           L32 40 
+           Q28 40 28 44 Z" 
+        fill="url(#amberGradient)" 
+        filter="url(#glow)"
+        opacity="0.9"/>
+  
+  <!-- Three dots in chat bubble (representing conversation) -->
+  <circle cx="38" cy="54" r="3" fill="#0a0a0f"/>
+  <circle cx="46" cy="54" r="3" fill="#0a0a0f"/>
+  <circle cx="54" cy="54" r="3" fill="#0a0a0f"/>
+  
+  <!-- Flow arrow from chat to book -->
+  <path d="M72 58 
+           L82 58 
+           L82 52 
+           L94 64 
+           L82 76 
+           L82 70 
+           L72 70 
+           Z" 
+        fill="url(#amberGradient)"/>
+  
+  <!-- Book/knowledge base on the right (Obsidian) -->
+  <path d="M96 48 
+           L96 84 
+           Q96 88 92 88 
+           L76 88 
+           Q72 88 72 84 
+           L72 48 
+           Q72 44 76 44 
+           L92 44 
+           Q96 44 96 48 Z" 
+        fill="none" 
+        stroke="url(#amberGradient)" 
+        stroke-width="3"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+  
+  <!-- Book pages/spine detail -->
+  <path d="M76 52 L92 52" stroke="url(#amberGradient)" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  <path d="M76 60 L88 60" stroke="url(#amberGradient)" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  <path d="M76 68 L90 68" stroke="url(#amberGradient)" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  <path d="M76 76 L86 76" stroke="url(#amberGradient)" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  
+  <!-- Bookmark ribbon on book -->
+  <path d="M84 48 L84 64 L88 60 L92 64 L92 48" fill="url(#amberGradient)" opacity="0.8"/>
+</svg>

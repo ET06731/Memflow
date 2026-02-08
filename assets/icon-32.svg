@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="ag32" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#0a0a0f"/>
+  
+  <!-- Chat bubble -->
+  <path d="M5 9 L5 18 Q5 19 6 19 L11 19 L11 22 L14 19 L18 19 Q19 19 19 18 L19 9 Q19 8 18 8 L6 8 Q5 8 5 9 Z" 
+        fill="url(#ag32)"/>
+  
+  <!-- Dots -->
+  <circle cx="9" cy="13.5" r="1" fill="#0a0a0f"/>
+  <circle cx="12" cy="13.5" r="1" fill="#0a0a0f"/>
+  <circle cx="15" cy="13.5" r="1" fill="#0a0a0f"/>
+  
+  <!-- Arrow -->
+  <path d="M20 14 L25 14 L25 11 L28 15.5 L25 20 L25 17 L20 17 Z" fill="url(#ag32)"/>
+  
+  <!-- Book -->
+  <rect x="22" y="9" width="7" height="14" rx="2" fill="none" stroke="url(#ag32)" stroke-width="1.5"/>
+  <line x1="24" y1="12" x2="27" y2="12" stroke="url(#ag32)" stroke-width="1" opacity="0.6"/>
+  <line x1="24" y1="15" x2="27" y2="15" stroke="url(#ag32)" stroke-width="1" opacity="0.6"/>
+  <line x1="24" y1="18" x2="27" y2="18" stroke="url(#ag32)" stroke-width="1" opacity="0.6"/>
+</svg>

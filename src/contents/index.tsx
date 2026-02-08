@@ -41,19 +41,19 @@ async function exportDirect() {
 
     console.log('✅ 元数据生成完成:', metadata)
 
+    // 获取用户配置
+    const { obsidianConfig } = await chrome.storage.sync.get('obsidianConfig')
+
     // 构建 Markdown
     const markdownBuilder = createMarkdownBuilder()
-    const markdown = markdownBuilder.build(conversation, metadata)
+    const markdown = markdownBuilder.build(conversation, metadata, {
+      contentFormat: obsidianConfig?.contentFormat || 'web'
+    })
 
     console.log('✅ Markdown 构建完成')
-
-    // 检查扩展上下文是否有效
     if (!chrome.runtime?.id || !chrome.storage) {
       throw new Error('扩展连接已断开，请刷新页面后重试')
     }
-
-    // 获取用户配置
-    const { obsidianConfig } = await chrome.storage.sync.get('obsidianConfig')
 
     if (!obsidianConfig || !obsidianConfig.vaultName) {
       // 未配置，使用下载方式并提示

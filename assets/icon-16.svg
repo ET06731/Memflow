@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <defs>
+    <linearGradient id="ag" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="16" height="16" rx="3" fill="#0a0a0f"/>
+  
+  <!-- Simplified chat to book flow -->
+  <path d="M2 4 L2 9 L4 9 L6 11 L6 9 L8 9 L8 4 Z" fill="url(#ag)"/>
+  <circle cx="4" cy="6.5" r="0.8" fill="#0a0a0f"/>
+  <circle cx="6" cy="6.5" r="0.8" fill="#0a0a0f"/>
+  
+  <!-- Arrow -->
+  <path d="M9 6.5 L12 6.5 L12 5 L14 7 L12 9 L12 7.5 L9 7.5 Z" fill="url(#ag)"/>
+  
+  <!-- Book -->
+  <rect x="11" y="4" width="4" height="8" rx="1" fill="none" stroke="url(#ag)" stroke-width="1"/>
+  <line x1="12" y1="6" x2="14" y2="6" stroke="url(#ag)" stroke-width="0.5"/>
+</svg>

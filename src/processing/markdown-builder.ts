@@ -22,9 +22,9 @@ export class MarkdownBuilder {
     /**
      * 构建完整的 Markdown 文档
      */
-    build(conversation: Conversation, metadata?: Metadata): string {
+    build(conversation: Conversation, metadata?: Metadata, options?: { contentFormat: 'callout' | 'web' }): string {
         const yaml = this.buildYAML(conversation, metadata)
-        const content = this.buildContent(conversation, metadata)
+        const content = this.buildContent(conversation, metadata, options?.contentFormat || 'web')
 
         return `${yaml}\n\n${content}`
     }
@@ -34,60 +34,85 @@ export class MarkdownBuilder {
    */
     private buildYAML(conversation: Conversation, metadata?: Metadata): string {
         const date = new Date().toISOString().split('T')[0]
-        const title = metadata?.title || conversation.title || 'Untitled'
         const keywords = metadata?.keywords || []
-        const category = metadata?.category || '未分类'
+        const category = metadata?.category || '编程'
+        const url = (conversation.url || '').replace(/"/g, '\\"')
+        const platform = conversation.platform
+
+        // 构建标签数组
+        const tags = [
+            'AI对话',
+            platform,
+            ...keywords
+        ].filter(t => t)
 
         return `---
-title: "${title}"
 created: ${date}
-source: ${conversation.platform}
-url: "${conversation.url}"
-tags:
-  - AI对话
-  - ${conversation.platform}
-${keywords.map(k => `  - ${k}`).join('\n')}
+source: [[${platform}]]
+original_url: "${url}"
+tags: [${tags.join(', ')}]
 category: ${category}
+status: 🟢 待整理
 ---`
     }
 
     /**
    * 构建对话内容
    */
-    private buildContent(conversation: Conversation, metadata?: Metadata): string {
+    private buildContent(conversation: Conversation, metadata?: Metadata, format: 'callout' | 'web' = 'web'): string {
         let md = ''
 
-        // 标题
-        const title = metadata?.title || conversation.title || '对话记录'
-        md += `# ${title}\n\n`
+        // 标题 (Web模式下才显示H1)
+        if (format === 'web') {
+            md += `# ${metadata?.title || conversation.title || '对话记录'}\n\n`
+        } else {
+            // Callout模式下，文件名通常就是标题，文档内再重复H1显得多余，但为了大纲清晰，也可以加
+            md += `# ${metadata?.title || conversation.title || '对话记录'}\n\n`
+        }
 
         // 摘要（如果有）
         if (metadata?.summary) {
             md += `> [!abstract] 记忆摘要\n`
-            md += `> ${metadata.summary}\n\n`
-            md += `---\n\n`
+            md += `> ${metadata.summary.replace(/\n/g, '\n> ')}\n\n`
+            if (format === 'web') md += `---\n\n`
         }
 
-        // 对话内容 - 使用清晰的标题+内容格式
+        // 对话内容
         conversation.messages.forEach((msg, index) => {
-            if (msg.role === 'user') {
-                // 用户提问
-                md += `## 💬 提问 ${Math.floor(index / 2) + 1}\n\n`
-                md += `${this.formatContent(msg.content)}\n\n`
-            } else {
-                // AI回答 - 保持原始格式
-                md += `## 🤖 ${conversation.platform} 的回答\n\n`
-                md += `${this.formatContent(msg.content)}\n\n`
-            }
+            const content = this.formatContent(msg.content)
 
-            md += `---\n\n`
+            if (format === 'callout') {
+                // Callout 模式
+                if (msg.role === 'user') {
+                    md += `> [!question] 用户提问\n`
+                } else {
+                    md += `> [!ai] ${conversation.platform} 的回答\n`
+                }
+
+                // 为每一行添加引用符号
+                md += content.split('\n').map(line => `> ${line}`).join('\n')
+                md += `\n\n`
+            } else {
+                // Web 模式
+                const roleName = msg.role === 'user' ? 'User' : conversation.platform
+                const icon = msg.role === 'user' ? '💬' : '🤖'
+                md += `## ${icon} ${roleName}\n\n`
+                md += `${content}\n\n`
+                md += `---\n\n`
+            }
         })
 
-        // 添加相关上下文
-        md += `## 📎 元信息\n\n`
-        md += `- **来源平台**: ${conversation.platform}\n`
-        md += `- **原始链接**: [点击跳转](${conversation.url})\n`
-        md += `- **导出时间**: ${new Date().toLocaleString('zh-CN')}\n`
+        if (format === 'web') {
+            md += `## 📎 元信息\n\n`
+            md += `- **来源平台**: ${conversation.platform}\n`
+            md += `- **原始链接**: [点击跳转](${conversation.url})\n`
+            md += `- **导出时间**: ${new Date().toLocaleString('zh-CN')}\n`
+        } else {
+            md += `---\n\n`
+            md += `## 相关上下文记录\n\n`
+            md += `- 原始链接: [点击跳转](${conversation.url})\n`
+            md += `- 导出时间: ${new Date().toLocaleString('zh-CN')}\n`
+        }
 
         return md
     }
@@ -96,29 +121,12 @@ category: ${category}
      * 格式化内容，保留段落和列表结构
      */
     private formatContent(content: string): string {
-        // 按段落分割
-        const paragraphs = content.split(/\n\n+/)
-
-        return paragraphs.map(para => {
-            // 移除首尾空白
-            para = para.trim()
-
-            // 检查是否是列表项
-            if (/^[\d\u4e00-\u9fa5]+[.、．]/.test(para) || /^[-*•]/.test(para)) {
-                // 已经是列表格式，保持不变
-                return para
-            }
-
-            // 检查是否包含多行列表
-            const lines = para.split('\n')
-            if (lines.some(line => /^[\d\u4e00-\u9fa5]+[.、．]/.test(line.trim()))) {
-                // 包含列表项，保持原样
-                return lines.map(l => l.trim()).join('\n')
-            }
-
-            // 普通段落
-            return para
-        }).join('\n\n')
+        // 1. 修复 Turndown 可能产生的 + 列表符号，统一转为 -
+        // 2. 移除多余的空行
+        return content
+            .replace(/^\+ /gm, '- ') // 将行首的 + 替换为 -
+            .replace(/\n{3,}/g, '\n\n') // 限制最大连续空行为2
+            .trim()
     }
 
     /**

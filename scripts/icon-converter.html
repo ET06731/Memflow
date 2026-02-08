@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Icon Converter</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        padding: 40px;
+        background: #1a1a1a;
+        color: #fff;
+      }
+      .icon-container {
+        display: inline-block;
+        margin: 20px;
+        text-align: center;
+        background: #2a2a2a;
+        padding: 20px;
+        border-radius: 8px;
+      }
+      canvas {
+        border: 1px solid #444;
+        background: #fff;
+        image-rendering: pixelated;
+      }
+      button {
+        margin-top: 10px;
+        padding: 8px 16px;
+        background: #f59e0b;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      button:hover {
+        background: #fbbf24;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Memflow Icon Converter</h1>
+    <p>右键点击图标保存为 PNG，或点击下载按钮</p>
+
+    <div id="icons"></div>
+
+    <script>
+      const sizes = [16, 32, 48, 128]
+
+      sizes.forEach((size) => {
+        const container = document.createElement("div")
+        container.className = "icon-container"
+
+        const title = document.createElement("h3")
+        title.textContent = `${size}x${size}`
+        container.appendChild(title)
+
+        const canvas = document.createElement("canvas")
+        canvas.width = size
+        canvas.height = size
+        canvas.id = `canvas-${size}`
+        container.appendChild(canvas)
+
+        const btn = document.createElement("button")
+        btn.textContent = "下载 PNG"
+        btn.onclick = () => downloadPNG(size)
+        container.appendChild(btn)
+
+        document.getElementById("icons").appendChild(container)
+
+        // Load and draw SVG
+        fetch(`assets/icon-${size}.svg`)
+          .then((r) => r.text())
+          .then((svg) => {
+            const img = new Image()
+            img.onload = () => {
+              const ctx = canvas.getContext("2d")
+              ctx.drawImage(img, 0, 0, size, size)
+            }
+            img.src =
+              "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg)
+          })
+      })
+
+      function downloadPNG(size) {
+        const canvas = document.getElementById(`canvas-${size}`)
+        const link = document.createElement("a")
+        link.download = `icon-${size}.png`
+        link.href = canvas.toDataURL("image/png")
+        link.click()
+      }
+    </script>
+  </body>
+</html>

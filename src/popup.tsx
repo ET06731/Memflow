@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react"
+﻿import { useEffect, useRef, useState } from "react"
 
 interface ObsidianConfig {
   vaultName: string
   defaultFolder: string
   fileNameFormat: string
+  contentFormat: "callout" | "web"
   exportMethod: "uri" | "download"
 }
 
@@ -32,6 +33,7 @@ function Popup() {
     vaultName: "",
     defaultFolder: "AI对话",
     fileNameFormat: "{{date}}-{{title}}",
+    contentFormat: "callout",
     exportMethod: "download"
   })
 
@@ -110,6 +112,16 @@ function Popup() {
           color: #e5e5e5;
           position: relative;
           overflow: hidden;
+          border: none;
+          outline: none;
+          box-shadow: none;
+        }
+        
+        body, html {
+          margin: 0;
+          padding: 0;
+          border: none;
+          outline: none;
         }
         
         .noise-overlay {
@@ -236,30 +248,11 @@ function Popup() {
           position: relative;
         }
         
-        .input-wrapper::before {
-          content: '';
-          position: absolute;
-          inset: -1px;
-          border-radius: 8px;
-          padding: 1px;
-          background: linear-gradient(135deg, rgba(245, 158, 11, 0.3) 0%, transparent 50%, rgba(245, 158, 11, 0.1) 100%);
-          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          opacity: 0;
-          transition: opacity 0.3s ease;
-        }
-        
-        .input-wrapper.focused::before {
-          opacity: 1;
-        }
-        
         .form-input {
           width: 100%;
           padding: 12px 14px;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.04);
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 8px;
           font-family: 'JetBrains Mono', monospace;
           font-size: 13px;
@@ -267,6 +260,8 @@ function Popup() {
           box-sizing: border-box;
           outline: none;
           transition: all 0.3s ease;
+          pointer-events: auto;
+          position: relative;
         }
         
         .form-input::placeholder {
@@ -549,6 +544,43 @@ function Popup() {
             <span className="input-hint">
               Available: {"{{date}} {{title}} {{platform}}"}
             </span>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Content Format</label>
+            <div className="method-selector">
+              <div className="method-option">
+                <input
+                  type="radio"
+                  id="callout"
+                  className="method-radio"
+                  checked={config.contentFormat === "callout"}
+                  onChange={() => setConfig({ ...config, contentFormat: "callout" })}
+                />
+                <label htmlFor="callout" className="method-label">
+                  <span className="method-badge">New</span>
+                  <span className="method-icon">❝❞</span>
+                  <span className="method-title">Callout</span>
+                  <span className="method-desc">Obsidian Style</span>
+                </label>
+              </div>
+              <div className="method-option">
+                <input
+                  type="radio"
+                  id="web"
+                  className="method-radio"
+                  checked={config.contentFormat === "web" || !config.contentFormat}
+                  onChange={() =>
+                    setConfig({ ...config, contentFormat: "web" })
+                  }
+                />
+                <label htmlFor="web" className="method-label">
+                  <span className="method-icon">📄</span>
+                  <span className="method-title">Web</span>
+                  <span className="method-desc">Original Style</span>
+                </label>
+              </div>
+            </div>
           </div>
 
           <div className="form-group">

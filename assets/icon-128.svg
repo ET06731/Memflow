@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="ag128" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="50%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+    <filter id="gl128" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="128" height="128" rx="24" fill="#0a0a0f"/>
+  
+  <!-- Chat bubble -->
+  <path d="M20 36 L20 72 Q20 76 24 76 L44 76 L44 88 L56 76 L72 76 Q76 76 76 72 L76 36 Q76 32 72 32 L24 32 Q20 32 20 36 Z" 
+        fill="url(#ag128)" 
+        filter="url(#gl128)"/>
+  
+  <!-- Dots -->
+  <circle cx="36" cy="54" r="4" fill="#0a0a0f"/>
+  <circle cx="48" cy="54" r="4" fill="#0a0a0f"/>
+  <circle cx="60" cy="54" r="4" fill="#0a0a0f"/>
+  
+  <!-- Arrow -->
+  <path d="M80 56 L100 56 L100 48 L116 62 L100 76 L100 68 L80 68 Z" fill="url(#ag128)"/>
+  
+  <!-- Book -->
+  <rect x="88" y="36" width="28" height="56" rx="4" fill="none" stroke="url(#ag128)" stroke-width="3"/>
+  <line x1="92" y1="48" x2="112" y2="48" stroke="url(#ag128)" stroke-width="2" opacity="0.5"/>
+  <line x1="92" y1="60" x2="110" y2="60" stroke="url(#ag128)" stroke-width="2" opacity="0.5"/>
+  <line x1="92" y1="72" x2="112" y2="72" stroke="url(#ag128)" stroke-width="2" opacity="0.5"/>
+</svg>
