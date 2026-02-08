@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 interface ObsidianConfig {
   vaultName: string
@@ -555,7 +555,9 @@ function Popup() {
                   id="callout"
                   className="method-radio"
                   checked={config.contentFormat === "callout"}
-                  onChange={() => setConfig({ ...config, contentFormat: "callout" })}
+                  onChange={() =>
+                    setConfig({ ...config, contentFormat: "callout" })
+                  }
                 />
                 <label htmlFor="callout" className="method-label">
                   <span className="method-badge">New</span>
@@ -569,7 +571,9 @@ function Popup() {
                   type="radio"
                   id="web"
                   className="method-radio"
-                  checked={config.contentFormat === "web" || !config.contentFormat}
+                  checked={
+                    config.contentFormat === "web" || !config.contentFormat
+                  }
                   onChange={() =>
                     setConfig({ ...config, contentFormat: "web" })
                   }
@@ -660,7 +664,7 @@ function Popup() {
         <div className="footer">
           <span>v1.0.0</span>
           <a
-            href="https://github.com/yourusername/memflow"
+            href="https://github.com/ET06731/Memflow"
             target="_blank"
             rel="noopener noreferrer">
             GitHub →

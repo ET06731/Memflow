@@ -1,9 +1,9 @@
 {
   "name": "memflow",
   "displayName": "Memflow - 流动的记忆",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Export AI conversations to Obsidian - A flowing memory bridge across platforms",
-  "author": "Plasmo Corp. <foss@plasmo.com>",
+  "author": "Memflow Team",
   "scripts": {
     "dev": "plasmo dev",
     "build": "plasmo build",
