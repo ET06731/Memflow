@@ -1,6 +1,7 @@
 import type { PlasmoCSConfig } from "plasmo"
 import { detectPlatformAdapter } from "./adapters"
 import { createMetadataGenerator, createMarkdownBuilder } from "../processing"
+import { ObsidianURIHandler } from "../obsidian/uri-handler"
 
 export const config: PlasmoCSConfig = {
   matches: [
@@ -64,7 +65,7 @@ async function exportDirect() {
 
     // 根据导出方式分流
     if (obsidianConfig.exportMethod === 'uri') {
-      const { ObsidianURIHandler } = await import('../obsidian/uri-handler')
+      // 静态导入已在文件顶部完成（需要修改顶部导入）
       const handler = new ObsidianURIHandler(obsidianConfig)
       const success = await handler.exportToObsidian(markdown, metadata)
 
