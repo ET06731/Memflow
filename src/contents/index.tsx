@@ -107,7 +107,7 @@ function createToolbarButton() {
   button.setAttribute("aria-label", "导出到 Obsidian")
 
   button.innerHTML = `
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
       <polyline points="7 10 12 15 17 10"></polyline>
       <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -125,20 +125,21 @@ function createToolbarButton() {
       width: 32px;
       height: 32px;
       padding: 0;
-      margin: 0 4px;
+      margin: 0 30px 0 0;
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
       cursor: pointer;
-      color: inherit;
-      opacity: 0.6;
-      transition: opacity 0.2s ease;
+      color: #ffffff;
+      opacity: 1;
+      transition: transform 0.2s ease;
       position: relative;
     }
     
     .memflow-toolbar-btn:hover {
-      opacity: 1;
+      transform: translateY(-1px);
       background: transparent !important;
+      opacity: 1;
     }
     
     .memflow-toolbar-btn svg {
@@ -148,7 +149,7 @@ function createToolbarButton() {
     
     .memflow-toolbar-btn.exporting {
       pointer-events: none;
-      opacity: 0.6;
+      opacity: 1;
     }
     
     .memflow-toolbar-btn.exporting svg {
