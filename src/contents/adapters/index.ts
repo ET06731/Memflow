@@ -1,34 +1,31 @@
-import { createDeepSeekAdapter } from "./deepseek"
 import type { IAdapter } from "./base-adapter"
+import { createDeepSeekAdapter } from "./deepseek"
+import { createChatGPTAdapter } from "./chatgpt"
+import { createKimiAdapter } from "./kimi"
+
+export { BaseAdapter } from "./base-adapter"
+export { DeepSeekAdapter } from "./deepseek"
+export { KimiAdapter } from "./kimi"
+export { ChatGPTAdapter } from "./chatgpt"
 
 /**
- * 平台适配器注册表
- */
-const adapters: IAdapter[] = [
-    createDeepSeekAdapter()
-    // 未来添加更多适配器：
-    // createChatGPTAdapter(),
-    // createGeminiAdapter(),
-    // createClaudeAdapter(),
-]
-
-/**
- * 检测当前平台并返回对应的适配器
+ * 自动检测当前平台并返回对应的适配器
  */
 export function detectPlatformAdapter(): IAdapter | null {
+    // 按优先级尝试检测
+    const adapters = [
+        createDeepSeekAdapter(),
+        createChatGPTAdapter(),
+        createKimiAdapter()
+    ]
+
     for (const adapter of adapters) {
         if (adapter.detectPlatform()) {
-            console.log(`✅ Detected platform: ${adapter.platformName}`)
+            console.log(`✅ 检测到平台: ${adapter.platformName}`)
             return adapter
         }
     }
 
-    console.warn("⚠️ No platform adapter found for current page")
     return null
 }
 
-/**
- * 导出所有适配器相关
- */
-export * from "./base-adapter"
-export * from "./deepseek"

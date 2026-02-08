@@ -41,7 +41,7 @@ async function exportDirect() {
     })
 
     console.log("✅ Markdown 构建完成")
-    
+
     if (!chrome.runtime?.id || !chrome.storage) {
       throw new Error("扩展连接已断开，请刷新页面后重试")
     }
@@ -115,33 +115,35 @@ function createToolbarButton() {
   `
 
   button.className = "memflow-toolbar-btn"
-  
+
   const style = document.createElement("style")
   style.textContent = `
     .memflow-toolbar-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 36px;
-      height: 36px;
+      width: 32px;
+      height: 32px;
       padding: 0;
-      margin: 0 24px 0 4px;
-      background: transparent;
-      border: none;
+      margin: 0 4px;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
       cursor: pointer;
-      color: var(--text-secondary, #999);
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      color: inherit;
+      opacity: 0.6;
+      transition: opacity 0.2s ease;
       position: relative;
     }
     
     .memflow-toolbar-btn:hover {
-      color: var(--text-primary, #fff);
-      transform: translateY(-1px);
+      opacity: 1;
+      background: transparent !important;
     }
     
     .memflow-toolbar-btn svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
     }
     
     .memflow-toolbar-btn.exporting {
@@ -163,26 +165,54 @@ function createToolbarButton() {
       top: 24px;
       right: 24px;
       z-index: 10000;
-      padding: 12px 20px;
-      background: rgba(0, 0, 0, 0.85);
-      color: white;
-      font-size: 14px;
-      border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      padding: 14px 24px;
+      background: linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #0d0d12 100%);
+      color: #e5e5e5;
+      font-size: 13px;
+      border-radius: 10px;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(245, 158, 11, 0.15);
       animation: memflow-toast-slide-in 0.3s ease-out;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'JetBrains Mono', monospace;
+      max-width: 400px;
+      line-height: 1.5;
+      backdrop-filter: blur(10px);
     }
 
     .memflow-toast-success {
-      background: #10b981;
+      border-color: rgba(16, 185, 129, 0.5);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(16, 185, 129, 0.2);
+    }
+
+    .memflow-toast-success::before {
+      content: '✓';
+      color: #10b981;
+      margin-right: 10px;
+      font-weight: bold;
     }
 
     .memflow-toast-error {
-      background: #ef4444;
+      border-color: rgba(239, 68, 68, 0.5);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(239, 68, 68, 0.2);
+    }
+
+    .memflow-toast-error::before {
+      content: '✗';
+      color: #ef4444;
+      margin-right: 10px;
+      font-weight: bold;
     }
 
     .memflow-toast-warning {
-      background: #f59e0b;
+      border-color: rgba(245, 158, 11, 0.5);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(245, 158, 11, 0.2);
+    }
+
+    .memflow-toast-warning::before {
+      content: '⚠';
+      color: #f59e0b;
+      margin-right: 10px;
+      font-weight: bold;
     }
 
     @keyframes memflow-toast-slide-in {
@@ -193,6 +223,17 @@ function createToolbarButton() {
       to {
         transform: translateX(0);
         opacity: 1;
+      }
+    }
+    
+    @keyframes memflow-toast-slide-out {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
       }
     }
   `
@@ -212,33 +253,72 @@ function createToolbarButton() {
 }
 
 function findToolbarLocation(): HTMLElement | null {
-  const buttonGroupSelectors = [
-    "header .header-actions",
+  // 策略 1: 寻找"分享"按钮 (Share Button) 并插入到它左边
+  // 这是一个非常通用的策略，适用于 ChatGPT, Kimi 等大多数 AI 网页
+  const shareButtonSelectors = [
+    "[data-testid='share-chat-button']", // ChatGPT
+    "button[aria-label*='Share']", // 通用英文
+    "button[aria-label*='分享']", // 通用中文
+    ".header-right button[class*='share']" // Kimi 可能的类名
+  ]
+
+  for (const selector of shareButtonSelectors) {
+    const shareBtn = document.querySelector(selector)
+    if (shareBtn && shareBtn.parentElement) {
+      // 检查父容器是否即使 header 或 toolbar 相关的
+      // 避免误判 (比如把某个普通按钮当成 header 分享按钮)
+      // 但其实顶部右上角的分享按钮通常就是我们要找的
+
+      const wrapper = document.createElement("div")
+      wrapper.style.cssText =
+        "display: inline-flex; align-items: center; margin-right: 8px;"
+
+      // 插入到分享按钮之前
+      shareBtn.parentElement.insertBefore(wrapper, shareBtn)
+      console.log("✅ 已定位到分享按钮旁:", selector)
+      return wrapper
+    }
+  }
+
+  // 策略 2: 常见的顶部右侧容器 (Header Right)
+  const headerRightSelectors = [
+    // ChatGPT
+    ".sticky.top-0 .flex.items-center:last-child",
+    "[data-testid='header-user-menu-button']", // 用户头像旁边
+
+    // Kimi
+    ".header-right .action-group",
+    ".header-right",
+
+    // DeepSeek
     "header .header-right",
+    "header .header-actions",
+
+    // Fallback
     "header .actions",
-    "header .toolbar",
-    "header [role=\"toolbar\"]",
-    "header nav",
-    "header > div[class*=\"action\"]",
+    "header [role='toolbar']",
     "header > div:last-child"
   ]
 
-  for (const selector of buttonGroupSelectors) {
+  for (const selector of headerRightSelectors) {
     const element = document.querySelector(selector)
-    if (element && element.children.length > 0) {
-      const wrapper = document.createElement("span")
-      wrapper.style.cssText = "display: inline-flex; margin-right: 8px;"
+    if (element) {
+      const wrapper = document.createElement("div")
+      wrapper.style.cssText =
+        "display: inline-flex; align-items: center; margin: 0 8px;"
 
+      // 既然是右上角，通常插入到最前面比较合适（要在用户头像或分享按钮左边）
       if (element.firstChild) {
         element.insertBefore(wrapper, element.firstChild)
       } else {
         element.appendChild(wrapper)
       }
 
-      return wrapper as HTMLElement
+      return wrapper
     }
   }
 
+  // 策略 3:如果都没找到，尝试挂载到 header 末尾 (绝对定位)
   const header = document.querySelector("header")
   if (header) {
     const container = document.createElement("div")
@@ -246,30 +326,39 @@ function findToolbarLocation(): HTMLElement | null {
       display: inline-flex;
       align-items: center;
       position: absolute;
-      right: 80px;
+      right: 20px;
       top: 50%;
       transform: translateY(-50%);
       z-index: 100;
     `.trim()
 
-    header.style.position = header.style.position || "relative"
+    // 确保 header 有定位上下文
+    const style = window.getComputedStyle(header)
+    if (style.position === "static") {
+      header.style.position = "relative"
+    }
+
     header.appendChild(container)
     return container
   }
 
+  // 策略 4: 最后的保底 - 页面右上角固定悬浮 (纯图标，无背景)
   const container = document.createElement("div")
   container.style.cssText = `
     position: fixed;
-    top: 16px;
-    right: 80px;
-    z-index: 9999;
+    top: 15px;
+    right: 15px;
+    z-index: 99999;
   `.trim()
 
   document.body.appendChild(container)
   return container
 }
 
-function showToast(message: string, type: "success" | "error" | "warning" = "success") {
+function showToast(
+  message: string,
+  type: "success" | "error" | "warning" = "success"
+) {
   const existingToast = document.querySelector(".memflow-toast")
   if (existingToast) {
     existingToast.remove()
@@ -282,8 +371,7 @@ function showToast(message: string, type: "success" | "error" | "warning" = "suc
   document.body.appendChild(toast)
 
   setTimeout(() => {
-    toast.style.opacity = "0"
-    toast.style.transition = "opacity 0.3s"
+    toast.style.animation = "memflow-toast-slide-out 0.3s ease-out forwards"
     setTimeout(() => toast.remove(), 300)
   }, 3000)
 }

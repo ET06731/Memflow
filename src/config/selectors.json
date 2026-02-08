@@ -12,11 +12,20 @@
             "deleteButton": ".message-actions button[aria-label='删除'], button[aria-label='删除']"
         },
         "chatgpt": {
-            "messageContainer": "[data-message-author-role], article",
+            "messageContainer": "article[data-testid*='conversation-turn'], [data-message-author-role]",
             "userMessage": "[data-message-author-role='user']",
             "aiMessage": "[data-message-author-role='assistant']",
-            "inputBox": "#prompt-textarea",
-            "sendButton": "button[data-testid='send-button']"
+            "codeBlock": "pre code, .markdown pre",
+            "inputBox": "#prompt-textarea, [data-id='root'] textarea",
+            "sendButton": "[data-testid='send-button'], button[aria-label='Send prompt']"
+        },
+        "kimi": {
+            "messageContainer": "div[class*='chat-message'], div[class*='pop-message-bubble']",
+            "userMessage": "div[class*='is-user'], div[class*='from-user']",
+            "aiMessage": "div[class*='is-assistant'], div[class*='from-assistant'], div[class*='pop-message-bubble']:not([class*='is-user'])",
+            "codeBlock": "pre code",
+            "inputBox": "div[contenteditable='true'], textarea[placeholder*='发个']",
+            "sendButton": "div[class*='send-button'], button[class*='send-button']"
         }
     }
 }

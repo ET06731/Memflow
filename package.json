@@ -28,7 +28,10 @@
   },
   "manifest": {
     "host_permissions": [
-      "https://*/*"
+      "https://*/*",
+      "https://*.moonshot.cn/*",
+      "https://*.openai.com/*",
+      "https://chatgpt.com/*"
     ],
     "permissions": [
       "storage"
