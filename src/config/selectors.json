@@ -20,9 +20,9 @@
       "sendButton": "[data-testid='send-button'], button[aria-label='Send prompt']"
     },
     "kimi": {
-      "messageContainer": "div[class*='chat-message'], div[class*='pop-message-bubble']",
-      "userMessage": "div[class*='is-user'], div[class*='from-user']",
-      "aiMessage": "div[class*='is-assistant'], div[class*='from-assistant'], div[class*='pop-message-bubble']:not([class*='is-user'])",
+      "messageContainer": "[class*='chat-item'], [class*='message-item'], div[class*='chat-message'], [data-testid='chat-message']",
+      "userMessage": "[class*='is-user'], [data-sender='user'], [class*='from-user']",
+      "aiMessage": "[class*='is-assistant'], [class*='from-assistant'], [data-sender='assistant']",
       "codeBlock": "pre code",
       "inputBox": "div[contenteditable='true'], textarea[placeholder*='发个']",
       "sendButton": "div[class*='send-button'], button[class*='send-button']"
