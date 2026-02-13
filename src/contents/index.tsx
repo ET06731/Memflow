@@ -43,6 +43,18 @@ async function exportDirect() {
 
     console.log("[Memflow] 元数据生成完成:", metadata)
 
+    // 检查扩展连接是否可用
+    if (!chrome.runtime?.id || !chrome.storage) {
+      console.warn("[Memflow] 扩展 API 不可用，使用降级方案直接下载")
+      const markdownBuilder = createMarkdownBuilder()
+      const markdown = markdownBuilder.build(conversation, metadata, {
+        contentFormat: "web"
+      })
+      downloadMarkdown(markdown, metadata.title)
+      showToast("已导出为文件", "success")
+      return
+    }
+
     const { obsidianConfig } = await chrome.storage.sync.get("obsidianConfig")
 
     const markdownBuilder = createMarkdownBuilder()
@@ -51,10 +63,6 @@ async function exportDirect() {
     })
 
     console.log("[Memflow] Markdown 构建完成")
-
-    if (!chrome.runtime?.id || !chrome.storage) {
-      throw new Error("扩展连接已断开，请刷新页面后重试")
-    }
 
     if (!obsidianConfig || !obsidianConfig.vaultName) {
       downloadMarkdown(markdown, metadata.title)
