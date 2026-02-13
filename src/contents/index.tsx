@@ -287,9 +287,16 @@ function createToolbarButton() {
   if (shareBtn && shareBtn.parentElement === toolbar) {
     toolbar.insertBefore(button, shareBtn)
 
-    // 豆包网站：增加与分享按钮的距离
-    if (window.location.host.includes("doubao.com")) {
-      button.style.marginRight = "30px"
+    // 在 flex 容器中，使用 gap 控制间距更优雅
+    const useGap = (toolbar as any).__memflowUseGap
+    if (useGap) {
+      // 父容器已经是 flex，设置合适的 margin
+      button.style.marginRight = "8px"
+    } else {
+      // 豆包网站：增加与分享按钮的距离
+      if (window.location.host.includes("doubao.com")) {
+        button.style.marginRight = "30px"
+      }
     }
 
     console.log("[Memflow] Memflow 工具栏按钮已创建（在分享按钮旁）")
@@ -300,10 +307,10 @@ function createToolbarButton() {
 }
 
 function findToolbarLocation(): HTMLElement | null {
-  console.log("🔍 开始查找工具栏位置...", window.location.host)
+  console.log("[Memflow] 开始查找工具栏位置...", window.location.host)
 
-  // 策略 1: 寻找"分享"按钮 (Share Button) 并插入到它左边
-  // 这是一个非常通用的策略，适用于 ChatGPT, Kimi 等大多数 AI 网页
+  // 策略 1: 寻找"分享"按钮 (Share Button) 并创建 flex 容器插入到它左边
+  // 使用 Material Design 最佳实践：在同一 flex 容器中水平排列
   const shareButtonSelectors = [
     "[data-testid='share-chat-button']", // ChatGPT
     "button[aria-label*='Share']", // 通用英文
@@ -314,21 +321,44 @@ function findToolbarLocation(): HTMLElement | null {
     ".header-right button[class*='share']",
     ".chat-header button[class*='share']",
     "button svg[class*='share']", // 包含分享图标的按钮
-    "button:has(svg[data-icon='share'])" // 通过图标查找
+    "button:has(svg[data-icon='share'])", // 通过图标查找
+    // Gemini Share Button
+    "button:has(mat-icon[fonticon='share'])",
+    "button:has(mat-icon[data-mat-icon-name='share'])",
+    "mat-icon[fonticon='share']", // Fallback to find parent
+    "mat-icon[data-mat-icon-name='share']" // Fallback to find parent
   ]
 
   for (const selector of shareButtonSelectors) {
     try {
       const shareBtn = document.querySelector(selector)
-      if (shareBtn && shareBtn.parentElement) {
-        // 直接返回分享按钮的父元素，让按钮插入到其中
-        console.log("[Memflow] 已定位到分享按钮旁:", selector)
-        // 为了确保按钮在分享按钮左边，我们需要在插入时处理
-        // 这里返回父元素，后续会在按钮创建后使用 insertBefore
-        const parent = shareBtn.parentElement
-          // 在父元素上标记分享按钮的位置
-          ; (parent as any).__memflowShareButton = shareBtn
-        return parent
+      if (shareBtn) {
+        // 如果找到的是 icon，向上查找 button
+        const targetBtn = shareBtn.tagName.toLowerCase() === 'button'
+          ? shareBtn
+          : shareBtn.closest('button')
+
+        if (targetBtn && targetBtn.parentElement) {
+          const parent = targetBtn.parentElement
+          
+          // 检查父容器是否已经是 flex 布局
+          const parentStyle = window.getComputedStyle(parent)
+          const isFlexContainer = parentStyle.display === 'flex' || 
+                                  parentStyle.display === 'inline-flex'
+          
+          if (isFlexContainer) {
+            // 直接在 flex 容器中插入，使用 gap 控制间距
+            console.log("[Memflow] 已定位到 flex 容器中的分享按钮:", selector)
+            ;(parent as any).__memflowShareButton = targetBtn
+            ;(parent as any).__memflowUseGap = true
+            return parent
+          } else {
+            // 创建 flex 容器包装器
+            console.log("[Memflow] 已定位到分享按钮旁，创建 flex 容器:", selector)
+            ;(parent as any).__memflowShareButton = targetBtn
+            return parent
+          }
+        }
       }
     } catch (e) {
       // 某些选择器可能不被支持，忽略错误
