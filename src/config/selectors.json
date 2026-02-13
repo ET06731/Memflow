@@ -1,31 +1,47 @@
 {
-    "version": "1.0.1",
-    "lastUpdate": "2026-02-08",
-    "platforms": {
-        "deepseek": {
-            "messageContainer": "div[class*='message'], [role='article'], .chat-item, div[data-message-id]",
-            "userMessage": "[data-role='user'], .user-message, div[class*='user-message'], div[class*='User']",
-            "aiMessage": "[data-role='assistant'], .ai-message, .assistant-message, div[class*='assistant'], div[class*='bot']",
-            "codeBlock": "pre code, .code-block code",
-            "inputBox": "textarea[placeholder*='输入'], textarea[placeholder*='问'], textarea",
-            "sendButton": "button[aria-label='发送'], button[type='submit']",
-            "deleteButton": ".message-actions button[aria-label='删除'], button[aria-label='删除']"
-        },
-        "chatgpt": {
-            "messageContainer": "article[data-testid*='conversation-turn'], [data-message-author-role]",
-            "userMessage": "[data-message-author-role='user']",
-            "aiMessage": "[data-message-author-role='assistant']",
-            "codeBlock": "pre code, .markdown pre",
-            "inputBox": "#prompt-textarea, [data-id='root'] textarea",
-            "sendButton": "[data-testid='send-button'], button[aria-label='Send prompt']"
-        },
-        "kimi": {
-            "messageContainer": "div[class*='chat-message'], div[class*='pop-message-bubble']",
-            "userMessage": "div[class*='is-user'], div[class*='from-user']",
-            "aiMessage": "div[class*='is-assistant'], div[class*='from-assistant'], div[class*='pop-message-bubble']:not([class*='is-user'])",
-            "codeBlock": "pre code",
-            "inputBox": "div[contenteditable='true'], textarea[placeholder*='发个']",
-            "sendButton": "div[class*='send-button'], button[class*='send-button']"
-        }
+  "version": "1.0.1",
+  "lastUpdate": "2026-02-08",
+  "platforms": {
+    "deepseek": {
+      "messageContainer": "div[class*='message'], [role='article'], .chat-item, div[data-message-id]",
+      "userMessage": "[data-role='user'], .user-message, div[class*='user-message'], div[class*='User']",
+      "aiMessage": "[data-role='assistant'], .ai-message, .assistant-message, div[class*='assistant'], div[class*='bot']",
+      "codeBlock": "pre code, .code-block code",
+      "inputBox": "textarea[placeholder*='输入'], textarea[placeholder*='问'], textarea",
+      "sendButton": "button[aria-label='发送'], button[type='submit']",
+      "deleteButton": ".message-actions button[aria-label='删除'], button[aria-label='删除']"
+    },
+    "chatgpt": {
+      "messageContainer": "article[data-testid*='conversation-turn'], [data-message-author-role]",
+      "userMessage": "[data-message-author-role='user']",
+      "aiMessage": "[data-message-author-role='assistant']",
+      "codeBlock": "pre code, .markdown pre",
+      "inputBox": "#prompt-textarea, [data-id='root'] textarea",
+      "sendButton": "[data-testid='send-button'], button[aria-label='Send prompt']"
+    },
+    "kimi": {
+      "messageContainer": "div[class*='chat-message'], div[class*='pop-message-bubble']",
+      "userMessage": "div[class*='is-user'], div[class*='from-user']",
+      "aiMessage": "div[class*='is-assistant'], div[class*='from-assistant'], div[class*='pop-message-bubble']:not([class*='is-user'])",
+      "codeBlock": "pre code",
+      "inputBox": "div[contenteditable='true'], textarea[placeholder*='发个']",
+      "sendButton": "div[class*='send-button'], button[class*='send-button']"
+    },
+    "gemini": {
+      "messageContainer": "div[class*='conversation-turn'], [data-turn], div[class*='response-container']",
+      "userMessage": "[data-message-author-role='user'], div[class*='user-content'], [data-turn='user']",
+      "aiMessage": "[data-message-author-role='assistant'], div[class*='model-response'], [data-turn='assistant'], div[class*='response-content']",
+      "codeBlock": "pre code, code[class*='language-']",
+      "inputBox": "textarea[placeholder*='询问'], textarea[placeholder*='Ask'], div[contenteditable='true'][role='textbox']",
+      "sendButton": "button[aria-label*='发送'], button[aria-label*='Send'], button[class*='send-button']"
+    },
+    "doubao": {
+      "messageContainer": "div[class*='message-list'] > div, div[class*='chat-message'], [class*='message-item']",
+      "userMessage": "[class*='user'], [data-sender='user'], div[class*='from-user']",
+      "aiMessage": "[class*='assistant'], [class*='bot'], [data-sender='assistant'], div[class*='from-assistant']",
+      "codeBlock": "pre code, [class*='code-block'] code",
+      "inputBox": "textarea[placeholder*='输入'], textarea[placeholder*='发送'], div[class*='input'] textarea, div[contenteditable='true']",
+      "sendButton": "button[type='submit'], button[class*='send'], button[aria-label*='发送']"
     }
+  }
 }
