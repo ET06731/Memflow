@@ -121,21 +121,51 @@ function createToolbarButton() {
     return
   }
 
-  const button = document.createElement("button")
-  button.id = "memflow-export-btn"
-  button.type = "button"
-  button.setAttribute("aria-label", "导出到 Obsidian")
-  button.title = "导出到 Obsidian"
+  // 判断是否为 DeepSeek 网站，使用原生 DOM 结构复刻
+  const isDeepSeek = window.location.host.includes("deepseek.com")
 
-  button.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-      <polyline points="7 10 12 15 17 10"/>
-      <line x1="12" y1="15" x2="12" y2="3"/>
-    </svg>
-  `
+  let button: HTMLElement
 
-  button.className = "memflow-toolbar-btn"
+  if (isDeepSeek) {
+    // DeepSeek: 复刻原生按钮结构
+    button = document.createElement("div")
+    button.id = "memflow-export-btn"
+    button.setAttribute("role", "button")
+    button.setAttribute("tabindex", "0")
+    button.setAttribute("aria-label", "导出到 Obsidian")
+    button.title = "导出到 Obsidian"
+
+    // 使用 DeepSeek 原生类名
+    button.className = "ds-icon-button ds-icon-button--xl ds-icon-button--sizing-container"
+
+    button.innerHTML = `
+      <div class="ds-icon-button__hover-bg"></div>
+      <div class="ds-icon" style="display: flex; align-items: center; justify-content: center;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </div>
+    `
+  } else {
+    // 其他网站: 使用普通 button
+    button = document.createElement("button")
+    button.id = "memflow-export-btn"
+    button.setAttribute("type", "button")
+    button.setAttribute("aria-label", "导出到 Obsidian")
+    button.title = "导出到 Obsidian"
+
+    button.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+    `
+
+    button.className = "memflow-toolbar-btn"
+  }
 
   const style = document.createElement("style")
   style.textContent = `
@@ -290,25 +320,27 @@ function createToolbarButton() {
     }
   })
 
-  // 如果有标记的分享按钮，插入到它前面
+  // 如果有标记的分享按钮，作为同级元素插入到它前面
   const shareBtn = (toolbar as any).__memflowShareButton
-  if (shareBtn && shareBtn.parentElement === toolbar) {
-    toolbar.insertBefore(button, shareBtn)
+  if (shareBtn && shareBtn.parentNode) {
+    // 将按钮插入为分享按钮的同级元素，在它之前
+    shareBtn.parentNode.insertBefore(button, shareBtn)
 
-    // 在 flex 容器中，使用 gap 控制间距更优雅
-    const useGap = (toolbar as any).__memflowUseGap
-    if (useGap) {
-      // 父容器已经是 flex，设置合适的 margin
-      button.style.marginRight = "8px"
+    // 设置适当的间距 - 根据不同网站微调
+    if (window.location.host.includes("deepseek.com")) {
+      // DeepSeek 微调：距离分享按钮更近，垂直居中
+      button.style.marginRight = "4px"   // 水平间距（右侧）
+      button.style.marginLeft = "0px"   // 水平间距（左侧）- 向右移动
+      button.style.marginTop = "8px"   // 垂直位置（上）- 向上移动
+      button.style.marginBottom = "0px"  // 垂直位置（下）
+    } else if (window.location.host.includes("doubao.com")) {
+      button.style.marginRight = "30px"
     } else {
-      // 豆包网站：增加与分享按钮的距离
-      if (window.location.host.includes("doubao.com")) {
-        button.style.marginRight = "30px"
-      }
+      button.style.marginRight = "8px"
     }
 
     console.log("[Memflow] Memflow 工具栏按钮已创建（在分享按钮旁）")
-  } else {
+  } else if (toolbar) {
     toolbar.appendChild(button)
     console.log("[Memflow] Memflow 工具栏按钮已创建")
   }
@@ -321,6 +353,7 @@ function findToolbarLocation(): HTMLElement | null {
   // 使用 Material Design 最佳实践：在同一 flex 容器中水平排列
   const shareButtonSelectors = [
     "[data-testid='share-chat-button']", // ChatGPT
+    "[data-testid='thread_share_btn_right_side']", // 豆包 (Doubao)
     "button[aria-label*='Share']", // 通用英文
     "button[aria-label*='分享']", // 通用中文
     "button[class*='share']", // 通用分享按钮类名
@@ -330,41 +363,62 @@ function findToolbarLocation(): HTMLElement | null {
     ".chat-header button[class*='share']",
     "button svg[class*='share']", // 包含分享图标的按钮
     "button:has(svg[data-icon='share'])", // 通过图标查找
-    // Gemini Share Button
+    // DeepSeek Share Button - 基于建议的稳健选择器
+    // 通过SVG路径特征识别分享按钮（最可靠）
+    "svg path[d*='M7.95889 1.52285']",  // DeepSeek分享图标SVG路径特征
+    "[class*='ds-icon']:has(svg path[d*='M7.95889'])",  // 包含特定SVG的ds-icon
+    // 排除内部元素（hover-bg, focus-ring等），只匹配按钮容器
+    "[class*='ds-icon-button']:not([class*='hover-bg']):not([class*='focus-ring']):not([class*='icon'])",
+    "div[role='button'].ds-icon-button--xl:last-child",  // 最稳健：大号按钮的最后一个
+    "div._2be88ba > div:last-child[role='button']",  // 父容器最后一个按钮
+    //"div[role='button'].ds-icon-button--sizing-container",  // 尺寸容器
+    // "div._57370c5.ds-icon-button",  // 精确类名组合（可能变动）
+    // ".ds-icon-button--xl[role='button']",  // 大号按钮且带 role，匹配到左侧新建对话
+    // Gemini / Google Share Button
     "button:has(mat-icon[fonticon='share'])",
     "button:has(mat-icon[data-mat-icon-name='share'])",
     "mat-icon[fonticon='share']", // Fallback to find parent
-    "mat-icon[data-mat-icon-name='share']" // Fallback to find parent
+    "mat-icon[data-mat-icon-name='share']",
+    "[fonticon='share']", // 更通用的选择器
+    "mat-icon[class*='share']" // 通过 class 匹配
   ]
 
   for (const selector of shareButtonSelectors) {
     try {
-      const shareBtn = document.querySelector(selector)
-      if (shareBtn) {
-        // 如果找到的是 icon，向上查找 button
-        const targetBtn = shareBtn.tagName.toLowerCase() === 'button'
-          ? shareBtn
-          : shareBtn.closest('button')
+      // 获取所有匹配的元素
+      const matches = document.querySelectorAll(selector)
 
-        if (targetBtn && targetBtn.parentElement) {
+      for (const shareBtn of matches) {
+        // 如果找到的是 icon 或其他内部元素，向上查找 button 或 role="button" 元素
+        let targetBtn: Element | null = shareBtn
+
+        // 如果当前元素不是交互按钮，向上查找
+        const tagName = shareBtn.tagName.toLowerCase()
+        const role = shareBtn.getAttribute('role')
+
+        if (tagName !== 'button' && role !== 'button') {
+          // 先尝试查找 button
+          targetBtn = shareBtn.closest('button')
+          // 如果没找到，尝试查找 role="button" 的元素（如 DeepSeek）
+          if (!targetBtn) {
+            targetBtn = shareBtn.closest('[role="button"]')
+          }
+        }
+
+        if (targetBtn && targetBtn.parentNode) {
+          // 对于 DeepSeek，需要额外验证：确保是最后一个按钮（分享按钮通常在右侧最后）
           const parent = targetBtn.parentElement
-          
-          // 检查父容器是否已经是 flex 布局
-          const parentStyle = window.getComputedStyle(parent)
-          const isFlexContainer = parentStyle.display === 'flex' || 
-                                  parentStyle.display === 'inline-flex'
-          
-          if (isFlexContainer) {
-            // 直接在 flex 容器中插入，使用 gap 控制间距
-            console.log("[Memflow] 已定位到 flex 容器中的分享按钮:", selector)
-            ;(parent as any).__memflowShareButton = targetBtn
-            ;(parent as any).__memflowUseGap = true
-            return parent
-          } else {
-            // 创建 flex 容器包装器
-            console.log("[Memflow] 已定位到分享按钮旁，创建 flex 容器:", selector)
-            ;(parent as any).__memflowShareButton = targetBtn
-            return parent
+          if (parent) {
+            const siblings = Array.from(parent.children).filter(el =>
+              el.matches('[role="button"], button') || el.querySelector('[role="button"], button')
+            )
+            const isLastButton = siblings.indexOf(targetBtn) === siblings.length - 1
+
+            if (isLastButton || window.location.host.includes('deepseek')) {
+              console.log("[Memflow] 已定位到分享按钮 (最后一个):", selector)
+                ; (targetBtn as any).__memflowShareButton = targetBtn
+              return targetBtn as HTMLElement
+            }
           }
         }
       }
@@ -373,69 +427,69 @@ function findToolbarLocation(): HTMLElement | null {
     }
   }
 
-  // 策略 2: 常见的顶部右侧容器 (Header Right)
-  const headerRightSelectors = [
-    // ChatGPT
-    ".sticky.top-0 .flex.items-center:last-child",
-    ".sticky.top-0 .flex.gap-2", // ChatGPT 新的顶部栏结构
-    "[data-testid='header-user-menu-button']",
-    "nav[aria-label='Chat history'] + div", // ChatGPT 新界面
+  // // 策略 2: 常见的顶部右侧容器 (Header Right)
+  // const headerRightSelectors = [
+  //   // ChatGPT
+  //   ".sticky.top-0 .flex.items-center:last-child",
+  //   ".sticky.top-0 .flex.gap-2", // ChatGPT 新的顶部栏结构
+  //   "[data-testid='header-user-menu-button']",
+  //   "nav[aria-label='Chat history'] + div", // ChatGPT 新界面
 
-    // Kimi
-    ".header-right .action-group",
-    ".header-right",
-    ".chat-header .action-group",
-    ".chat-header .header-actions",
-    "[class*='chat-header'] [class*='action']",
-    ".toolbar",
-    ".chat-toolbar",
-    "[class*='Toolbar']",
-    ".kimi-header .actions",
-    "[data-testid='chat-toolbar']",
+  //   // Kimi
+  //   ".header-right .action-group",
+  //   ".header-right",
+  //   ".chat-header .action-group",
+  //   ".chat-header .header-actions",
+  //   "[class*='chat-header'] [class*='action']",
+  //   ".toolbar",
+  //   ".chat-toolbar",
+  //   "[class*='Toolbar']",
+  //   ".kimi-header .actions",
+  //   "[data-testid='chat-toolbar']",
 
-    // Gemini
-    ".gb_Ld", // Google 顶部栏类名
-    "header div[role='toolbar']",
-    "[data-test-id='header-actions']",
-    ".gemini-header .actions",
-    "[class*='gemini'] [class*='header'] [class*='action']",
+  //   // Gemini
+  //   ".gb_Ld", // Google 顶部栏类名
+  //   "header div[role='toolbar']",
+  //   "[data-test-id='header-actions']",
+  //   ".gemini-header .actions",
+  //   "[class*='gemini'] [class*='header'] [class*='action']",
 
-    // DeepSeek
-    "header .header-right",
-    "header .header-actions",
+  //   // DeepSeek
+  //   "header .header-right",
+  //   "header .header-actions",
 
-    // 通用
-    "header .actions",
-    "header [role='toolbar']",
-    "header > div:last-child",
-    ".app-header > div:last-child",
-    "[class*='Header'] > div:last-child",
-    "#page-header > div:last-child",
-    ".top-bar .actions",
-    "[class*='topbar'] [class*='action']"
-  ]
+  //   // 通用
+  //   "header .actions",
+  //   "header [role='toolbar']",
+  //   "header > div:last-child",
+  //   ".app-header > div:last-child",
+  //   "[class*='Header'] > div:last-child",
+  //   "#page-header > div:last-child",
+  //   ".top-bar .actions",
+  //   "[class*='topbar'] [class*='action']"
+  // ]
 
-  for (const selector of headerRightSelectors) {
-    try {
-      const element = document.querySelector(selector)
-      if (element) {
-        const wrapper = document.createElement("div")
-        wrapper.style.cssText =
-          "display: inline-flex; align-items: center; margin: 0 8px;"
+  // for (const selector of headerRightSelectors) {
+  //   try {
+  //     const element = document.querySelector(selector)
+  //     if (element) {
+  //       const wrapper = document.createElement("div")
+  //       wrapper.style.cssText =
+  //         "display: inline-flex; align-items: center; margin: 0 8px;"
 
-        // 既然是右上角，通常插入到最前面比较合适
-        if (element.firstChild) {
-          element.insertBefore(wrapper, element.firstChild)
-        } else {
-          element.appendChild(wrapper)
-        }
-        console.log("[Memflow] 已定位到 Header Right:", selector)
-        return wrapper
-      }
-    } catch (e) {
-      // 忽略错误
-    }
-  }
+  //       // 既然是右上角，通常插入到最前面比较合适
+  //       if (element.firstChild) {
+  //         element.insertBefore(wrapper, element.firstChild)
+  //       } else {
+  //         element.appendChild(wrapper)
+  //       }
+  //       console.log("[Memflow] 已定位到 Header Right:", selector)
+  //       return wrapper
+  //     }
+  //   } catch (e) {
+  //     // 忽略错误
+  //   }
+  // }
 
   // 策略 3: 查找顶部导航栏
   const headerSelectors = [
@@ -452,7 +506,7 @@ function findToolbarLocation(): HTMLElement | null {
   for (const selector of headerSelectors) {
     try {
       const header = document.querySelector(selector)
-      if (header) {
+      if (header instanceof HTMLElement) {
         const container = document.createElement("div")
         container.style.cssText = `
           display: inline-flex;
