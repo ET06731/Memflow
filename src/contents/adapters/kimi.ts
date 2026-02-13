@@ -101,30 +101,12 @@ export class KimiAdapter extends BaseAdapter {
     console.log(`[Memflow] Kimi: 使用选择器 "${usedSelector}" 处理 ${messageElements.length} 个元素`)
 
     messageElements.forEach((element, index) => {
-      // 获取元素文本
-      const text = element.textContent || ""
-      const trimmedText = text.trim()
-
-      // 跳过文件上传等UI元素（只包含文件大小）
-      if (trimmedText.match(/^\d+\.?\d*\s*(KB|MB|GB)$/i)) {
-        console.log(`[Memflow] Kimi: 跳过文件大小元素: ${trimmedText.slice(0, 50)}`)
-        return
-      }
-
-      // 跳过太短的元素（可能是图标、按钮等）
-      if (trimmedText.length < 3) {
-        return
-      }
-
-      // 判断消息类型
+      // 判断消息类型 - 基于容器类名
       const className = element.className || ""
-      const isUser = className.includes('user') || 
-                    element.matches('[class*="user"]') ||
-                    element.querySelector('[class*="user"], [data-sender="user"]') !== null
-      const isAI = className.includes('assistant') || 
-                   className.includes('ai') ||
-                   element.matches('[class*="assistant"]') ||
-                   element.querySelector('[class*="assistant"], [data-sender="assistant"]') !== null
+      const isUser = className.includes('chat-content-item-user') || 
+                    element.matches('[class*="chat-content-item-user"]')
+      const isAI = className.includes('chat-content-item-assistant') || 
+                   element.matches('[class*="chat-content-item-assistant"]')
 
       let role: "user" | "assistant"
       if (isUser) {
@@ -132,33 +114,50 @@ export class KimiAdapter extends BaseAdapter {
       } else if (isAI) {
         role = "assistant"
       } else {
-        // 通过位置推断 - 通常奇数为用户，偶数为AI，或反过来
-        role = index % 2 === 1 ? "user" : "assistant"
+        // 通过位置推断
+        role = index % 2 === 0 ? "user" : "assistant"
       }
 
-      // 提取内容
-      let content = trimmedText
-
-      // 如果内容看起来是文件大小，尝试找内部的文本内容
-      if (content.match(/^\d+\.?\d*\s*(KB|MB|GB)/i)) {
-        // 查找内部的文本元素
-        const textSelectors = ['[class*="text"]', '[class*="content"]', 'p', 'span:not(:has(*))']
-        for (const sel of textSelectors) {
-          const textEl = element.querySelector(sel)
-          if (textEl && textEl.textContent) {
-            const innerText = textEl.textContent.trim()
-            if (innerText.length > content.length || !innerText.match(/^\d+\.?\d*\s*(KB|MB|GB)$/i)) {
-              content = innerText
-              break
-            }
-          }
+      // 提取内容 - 根据角色查找对应的文本容器
+      let content = ""
+      
+      if (role === "user") {
+        // 用户消息在 .user-content 中
+        const userContentEl = element.querySelector('.user-content, [class*="user-content"]')
+        if (userContentEl) {
+          content = userContentEl.textContent?.trim() || ""
+        }
+      } else {
+        // AI消息在 .markdown-container 中
+        const aiContentEl = element.querySelector('.markdown-container, [class*="markdown-container"]')
+        if (aiContentEl) {
+          content = aiContentEl.textContent?.trim() || ""
         }
       }
 
-      // 再次检查内容
-      if (content && 
-          content.length > 2 && 
-          !content.match(/^\d+\.?\d*\s*(KB|MB|GB)$/i)) {
+      // 如果没有找到特定容器，使用整个元素的文本
+      if (!content) {
+        content = element.textContent?.trim() || ""
+      }
+
+      // 跳过纯文件大小信息
+      const fileSizePattern = /^\d+\.?\d*\s*(KB|MB|GB)$/i
+      if (fileSizePattern.test(content)) {
+        console.log(`[Memflow] Kimi: 跳过纯文件大小元素: ${content}`)
+        return
+      }
+
+      // 清理文件大小信息（如 "文件名.pdf 185.97 KB"）
+      const fileSizeMatch = content.match(/(.+?)\s+\d+\.?\d*\s*(KB|MB|GB)$/i)
+      if (fileSizeMatch) {
+        content = fileSizeMatch[1].trim()
+      }
+
+      // 移除残留的文件大小模式
+      content = content.replace(/\d+\.?\d*\s*(KB|MB|GB)/gi, '').trim()
+
+      // 最终检查
+      if (content && content.length > 2 && !fileSizePattern.test(content)) {
         messages.push({
           role,
           content,
