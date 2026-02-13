@@ -143,17 +143,17 @@ function createToolbarButton() {
       border: none !important;
       border-radius: 0.5em !important;
       cursor: pointer !important;
-      color: inherit !important;
-      opacity: 0.7 !important;
-      transition: opacity 0.2s ease, background-color 0.2s ease !important;
+      color: rgba(255, 255, 255, 0.9) !important;
+      opacity: 1 !important;
+      transition: all 0.2s ease !important;
       position: relative !important;
       z-index: 9999 !important;
       font-size: 16px !important;
     }
 
     .memflow-toolbar-btn:hover {
-      opacity: 1 !important;
-      background-color: rgba(0, 0, 0, 0.05) !important;
+      background-color: rgba(255, 255, 255, 0.15) !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
     }
 
     .memflow-toolbar-btn svg {
