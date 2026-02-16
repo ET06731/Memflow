@@ -457,8 +457,16 @@ function findToolbarLocation(): HTMLElement | null {
   // 策略 1: 寻找"分享"按钮 (Share Button) 并创建 flex 容器插入到它左边
   // 使用 Material Design 最佳实践：在同一 flex 容器中水平排列
   const shareButtonSelectors = [
-    "[data-testid='share-chat-button']", // ChatGPT
-    "[data-testid='thread_share_btn_right_side']", // 豆包 (Doubao)
+    "[data-testid='share-chat-button']",
+    // ChatGPT - 最新界面
+    "button[data-testid='share-chat-button']", // 标准测试ID
+    "button[aria-label='分享']", // 精确匹配中文标签
+    "button.btn-ghost:has-text('分享')", // Ghost按钮包含"分享"文本
+    "button:has(svg use[href*='sprites-core'])", // ChatGPT特定sprite图标
+    "button:has(svg[width='20'][height='20'])", // ChatGPT分享图标尺寸
+    // 豆包 (Doubao)
+    "[data-testid='thread_share_btn_right_side']",
+    // 通用选择器
     "button[aria-label*='Share']", // 通用英文
     "button[aria-label*='分享']", // 通用中文
     "button[class*='share']", // 通用分享按钮类名
@@ -524,7 +532,7 @@ function findToolbarLocation(): HTMLElement | null {
 
             if (isLastButton || window.location.host.includes("deepseek")) {
               console.log("[Memflow] 已定位到分享按钮 (最后一个):", selector)
-              ;(targetBtn as any).__memflowShareButton = targetBtn
+                ; (targetBtn as any).__memflowShareButton = targetBtn
               return targetBtn as HTMLElement
             }
           }
