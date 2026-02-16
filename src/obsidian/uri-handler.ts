@@ -81,12 +81,21 @@ export class ObsidianURIHandler {
         if (markdown.length < 2000) {
           obsidianUrl += `&content=${encodeURIComponent(markdown)}`
           console.log("🔗 剪贴板失败，直接传参:", obsidianUrl.substring(0, 100))
-          this.openObsidianUrl(obsidianUrl)
+
+          // 只有 autoOpen 不为 false 时才打开 Obsidian
+          if (this.config.autoOpen !== false) {
+            this.openObsidianUrl(obsidianUrl)
+          } else {
+            console.log("🔇 静默模式：跳过打开 Obsidian")
+          }
 
           return {
             success: true,
             method: "direct",
-            message: "✅ 已发送到 Obsidian！"
+            message:
+              this.config.autoOpen !== false
+                ? "✅ 已发送到 Obsidian！"
+                : "✅ 文件已准备（静默模式）"
           }
         }
 
@@ -101,7 +110,12 @@ export class ObsidianURIHandler {
       obsidianUrl += "&clipboard"
       console.log("✅ 剪贴板就绪，调用 URI:", obsidianUrl)
 
-      this.openObsidianUrl(obsidianUrl)
+      // 只有 autoOpen 不为 false 时才打开 Obsidian
+      if (this.config.autoOpen !== false) {
+        this.openObsidianUrl(obsidianUrl)
+      } else {
+        console.log("🔇 静默模式：跳过打开 Obsidian，文件已在后台创建")
+      }
 
       return {
         success: true,
@@ -154,27 +168,14 @@ export class ObsidianURIHandler {
 
   /**
    * 打开 Obsidian URL
+   * 直接使用 window.open，避免 background script 通信延迟
    */
   private openObsidianUrl(url: string): void {
     console.log("🔗 打开 Obsidian:", url)
 
-    if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
-      try {
-        chrome.runtime
-          .sendMessage({
-            action: "openObsidianUrl",
-            url: url
-          })
-          .catch(() => {
-            window.open(url, "_self")
-          })
-        return
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    window.open(url, "_self")
+    // 直接使用 location.href 跳转，速度最快
+    // 使用 _self 确保在当前标签页打开（如果是弹出窗口）
+    window.location.href = url
   }
 
   static validateConfig(config: Partial<ObsidianConfig>): boolean {
