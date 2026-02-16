@@ -16,8 +16,8 @@
       "userMessage": "[data-message-author-role='user']",
       "aiMessage": "[data-message-author-role='assistant']",
       "codeBlock": "pre code, .markdown pre",
-      "inputBox": "#prompt-textarea, [data-id='root'] textarea",
-      "sendButton": "[data-testid='send-button'], button[aria-label='Send prompt']"
+      "inputBox": "#prompt-textarea, [data-id='root'] textarea, div[contenteditable='true'][role='textbox']",
+      "sendButton": "[data-testid='send-button'], button[aria-label='Send prompt'], button[data-testid='send-button'], form button[class*='mb-1']"
     },
     "kimi": {
       "messageContainer": "[class*='chat-content-item'], [class*='chat-item'], [class*='message-item'], div[class*='chat-message']",

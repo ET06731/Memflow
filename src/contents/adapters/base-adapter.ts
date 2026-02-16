@@ -11,6 +11,7 @@ export interface SelectorConfig {
   aiMessage: string
   codeBlock?: string
   deleteButton?: string
+  title?: string // 新增：标题选择器
   fallback?: {
     inputBox: string
     sendButton: string
@@ -229,25 +230,74 @@ export abstract class BaseAdapter implements IAdapter {
     prompt: string,
     sendButtonSelector: string
   ): Promise<void> {
-    // 设置值
-    input.value = prompt
+    // 1. 聚焦输入框
+    input.focus()
 
-    // 触发 input 事件（某些平台需要这个事件来启用发送按钮）
+    // 2. 设置值 - 针对 React 等框架做特殊处理
+    // React 16+ 重写了 value setter，直接赋值可能不会触发状态更新
+    const proto = Object.getPrototypeOf(input)
+    const nativeValueSetter = Object.getOwnPropertyDescriptor(
+      proto,
+      "value"
+    )?.set
+
+    if (nativeValueSetter) {
+      nativeValueSetter.call(input, prompt)
+    } else {
+      input.value = prompt
+    }
+
+    // 3. 触发一系列事件以激活 UI 状态
     input.dispatchEvent(new Event("input", { bubbles: true }))
     input.dispatchEvent(new Event("change", { bubbles: true }))
 
-    // 等待一小段时间确保UI更新
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    // 4. 等待 UI 响应（例如发送按钮变亮）
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
-    // 点击发送按钮
-    const sendButton = document.querySelector(
-      sendButtonSelector
-    ) as HTMLButtonElement
+    // 5. 查找发送按钮
+    const sendButton = document.querySelector(sendButtonSelector) as HTMLElement
+
     if (!sendButton) {
       throw new Error("Send button not found")
     }
 
+    // 6. 检查按钮状态，如果禁用则尝试重新触发事件
+    if (
+      (sendButton as HTMLButtonElement).disabled ||
+      sendButton.getAttribute("aria-disabled") === "true" ||
+      sendButton.classList.contains("disabled")
+    ) {
+      console.warn("[Memflow] 发送按钮禁用，尝试模拟键盘输入...")
+      input.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true }))
+      input.dispatchEvent(new KeyboardEvent("keypress", { bubbles: true }))
+      input.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true }))
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    }
+
+    // 7. 触发点击 (多种方式确保成功)
+    console.log("[Memflow] 点击发送按钮...")
     sendButton.click()
+
+    // 备用：模拟鼠标事件（某些按钮监听 mousedown/up）
+    const mouseEventInit = {
+      bubbles: true,
+      cancelable: true,
+      view: window
+    }
+    sendButton.dispatchEvent(new MouseEvent("mousedown", mouseEventInit))
+    sendButton.dispatchEvent(new MouseEvent("mouseup", mouseEventInit))
+
+    // 如果还没发送出去，可能需要回车发送
+    if (document.activeElement === input) {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          code: "Enter",
+          bubbles: true
+        })
+      )
+    }
   }
 
   async waitForResponse(timeout = 5000): Promise<string> {

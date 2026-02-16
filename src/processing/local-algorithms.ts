@@ -2,7 +2,7 @@
  * 简单的 TF-IDF 关键词提取
  */
 
-// 中英文停用词
+// 中英文停用词 (扩展版)
 const STOP_WORDS = new Set([
   // 中文
   "的",
@@ -31,8 +31,45 @@ const STOP_WORDS = new Set([
   "没有",
   "看",
   "好",
+  "好的",
   "自己",
   "这",
+  "那",
+  "有",
+  "与",
+  "及",
+  "等",
+  "或",
+  "但是",
+  "因为",
+  "所以",
+  "如果",
+  "虽然",
+  "关于",
+  "对于",
+  "之",
+  "为",
+  "以",
+  "将",
+  "本",
+  "该",
+  "由",
+  "向",
+  "而",
+  "被",
+  "让",
+  "给",
+  "但",
+  "并",
+  "更",
+  "已",
+  "我们要",
+  "你们",
+  "它们",
+  "什么",
+  "怎么",
+  "如何",
+  "为什么",
   // 英文
   "the",
   "a",
@@ -79,16 +116,61 @@ const STOP_WORDS = new Set([
   "we",
   "they",
   "them",
-  "their"
+  "their",
+  "my",
+  "your",
+  "his",
+  "her",
+  "its",
+  "our",
+  "us",
+  "him",
+  "if",
+  "then",
+  "else",
+  "when",
+  "where",
+  "why",
+  "how",
+  "all",
+  "any",
+  "both",
+  "each",
+  "few",
+  "more",
+  "most",
+  "other",
+  "some",
+  "such",
+  "no",
+  "nor",
+  "not",
+  "only",
+  "own",
+  "same",
+  "so",
+  "than",
+  "too",
+  "very",
+  "can",
+  "just",
+  "should",
+  "now"
 ])
 
 /**
  * 提取关键词（TF-IDF 简化版）
  */
 export function extractKeywords(text: string, topN = 5): string[] {
-  // 分词（简化版：中文按字符，英文按单词）
+  // 分词（改进版：支持中英文混合）
+  // 移除标点符号和特殊字符，只保留文字
+  const cleanText = text.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, " ")
+
+  // 分词策略：
+  // 1. 英文单词 (3个字母以上)
+  // 2. 中文词语 (2个汉字以上)
   const words =
-    text.toLowerCase().match(/[\u4e00-\u9fa5]{2,}|[a-z]{3,}/gi) || []
+    cleanText.toLowerCase().match(/[\u4e00-\u9fa5]{2,}|[a-z]{3,}/gi) || []
 
   // 词频统计
   const wordCount = new Map<string, number>()
@@ -106,7 +188,7 @@ export function extractKeywords(text: string, topN = 5): string[] {
 }
 
 /**
- * 生成标题（提取第一行/第一句话，先清理HTML）
+ * 生成标题（基于内容关键词的智能标题）
  */
 export function generateTitle(text: string, maxLength = 50): string {
   // 先清理HTML标签
@@ -115,29 +197,38 @@ export function generateTitle(text: string, maxLength = 50): string {
     .replace(/\s+/g, " ") // 合并多余空格
     .trim()
 
-  // 先尝试按换行分割，取第一行
-  const lines = cleanText
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0)
-  let title = lines[0] || ""
+  // 1. 尝试提取第一句话（最常见的情况）
+  const firstLine = cleanText.split("\n")[0]?.trim() || ""
+  const firstSentence =
+    firstLine.match(/^[^.!?。！？]+/)?.[0]?.trim() || firstLine
 
-  // 如果第一行太长，尝试提取第一句话（按标点符号）
-  if (title.length > maxLength) {
-    const firstSentence = title.match(/^[^.!?。！？]+/)?.[0] || title
-    title = firstSentence.trim()
+  // 如果第一句话长度适中且有意义（不是简单的"你好"之类），直接使用
+  if (firstSentence.length >= 5 && firstSentence.length <= maxLength) {
+    return firstSentence
   }
 
-  // 限制长度
-  if (title.length > maxLength) {
-    title = title.slice(0, maxLength) + "..."
+  // 2. 如果第一句话太短（如"你好"），尝试从前200个字符中提取关键词组合标题
+  if (firstSentence.length < 5) {
+    const keywords = extractKeywords(cleanText.slice(0, 500), 3)
+    if (keywords.length > 0) {
+      return keywords.join(" ") + " 对话"
+    }
   }
 
-  return title || "对话记录"
+  // 3. 如果第一句话太长，截断
+  if (firstSentence.length > maxLength) {
+    return firstSentence.slice(0, maxLength) + "..."
+  }
+
+  return firstSentence || "未命名对话"
 }
 
 /**
- * 生成智能摘要（基于句子重要性评分）
+ * 生成智能摘要（基于 TextRank 思想的句子评分）
+ * 算法逻辑参考 MrRSS：
+ * 1. 分词并计算词频 (TF)
+ * 2. 给每个句子评分 = sum(词频) / 句子长度
+ * 3. 考虑位置权重 (首尾句更重要)
  */
 export function generateSummary(text: string, maxSentences = 3): string {
   // 先清理HTML标签
@@ -146,12 +237,12 @@ export function generateSummary(text: string, maxSentences = 3): string {
     .replace(/\s+/g, " ")
     .trim()
 
-  // 按句子分割（支持中英文）
+  // 按句子分割（增强版正则，处理更多标点）
   const sentences = cleanText
-    .replace(/([.!?。！？])/g, "$1|")
+    .replace(/([.!?。！？\n])/g, "$1|")
     .split("|")
     .map((s) => s.trim())
-    .filter((s) => s.length > 10 && s.length < 200) // 过滤太短或太长的句子
+    .filter((s) => s.length > 10 && s.length < 300) // 过滤过短或过长的句子
 
   if (sentences.length === 0) {
     return cleanText.slice(0, 150) + (cleanText.length > 150 ? "..." : "")
@@ -161,52 +252,57 @@ export function generateSummary(text: string, maxSentences = 3): string {
     return sentences.join(" ")
   }
 
-  // 计算每句话的重要性分数
+  // 1. 计算词频 (Term Frequency)
   const wordFreq = new Map<string, number>()
-
-  // 统计词频
   sentences.forEach((sent) => {
-    const words =
-      sent.toLowerCase().match(/[\u4e00-\u9fa5]{2,}|[a-z]{3,}/gi) || []
+    const words = extractKeywords(sent, 100) // 提取所有关键词
     words.forEach((word) => {
-      if (!STOP_WORDS.has(word)) {
-        wordFreq.set(word, (wordFreq.get(word) || 0) + 1)
-      }
+      wordFreq.set(word, (wordFreq.get(word) || 0) + 1)
     })
   })
 
-  // 给句子打分
+  // 2. 给句子打分
   const scoredSentences = sentences.map((sent, index) => {
-    const words =
-      sent.toLowerCase().match(/[\u4e00-\u9fa5]{2,}|[a-z]{3,}/gi) || []
+    const words = extractKeywords(sent, 100)
     let score = 0
-    let wordCount = 0
+
+    if (words.length === 0) return { sentence: sent, score: 0, index }
 
     words.forEach((word) => {
-      if (!STOP_WORDS.has(word)) {
-        score += wordFreq.get(word) || 0
-        wordCount++
-      }
+      score += wordFreq.get(word) || 0
     })
 
-    // 归一化分数
-    const normalizedScore = wordCount > 0 ? score / wordCount : 0
+    // 归一化分数：除以句子长度（避免偏向长句）
+    // 但稍微保留一点长度优势（使用 log 或 sqrt）
+    const lengthPenalty = Math.max(1, Math.log(words.length + 1))
+    let finalScore = score / lengthPenalty
 
-    // 位置加权：开头的句子通常更重要
-    const positionWeight = index === 0 ? 1.5 : index < 3 ? 1.2 : 1.0
+    // 3. 位置加权：
+    // 开头(Introduction)和结尾(Conclusion)通常更重要
+    if (index === 0) finalScore *= 2.0
+    else if (index === sentences.length - 1) finalScore *= 1.5
+    else if (index < 3) finalScore *= 1.3
 
     return {
       sentence: sent,
-      score: normalizedScore * positionWeight,
+      score: finalScore,
       index
     }
   })
 
-  // 按分数排序并选择前 N 句
-  const topSentences = scoredSentences
+  // 4. 排序并提取
+  // 过滤掉得分极低的句子
+  const validSentences = scoredSentences.filter((s) => s.score > 0)
+
+  const topSentences = validSentences
     .sort((a, b) => b.score - a.score)
     .slice(0, maxSentences)
-    .sort((a, b) => a.index - b.index) // 按原始顺序排列
+    .sort((a, b) => a.index - b.index) // 恢复原始顺序，保持逻辑通顺
+
+  // 如果没有有效句子（比如全是废话），回退到前几句
+  if (topSentences.length === 0) {
+    return sentences.slice(0, maxSentences).join(" ")
+  }
 
   return topSentences.map((s) => s.sentence).join(" ")
 }

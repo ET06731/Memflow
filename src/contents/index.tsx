@@ -93,6 +93,87 @@ async function exportDirect() {
   }
 }
 
+async function exportSmart() {
+  try {
+    if (!currentAdapter) {
+      showToast("当前页面不支持导出", "error")
+      return
+    }
+
+    // 1. 确认提示
+    const confirmed = window.confirm(
+      "🤖 智能导出模式\n\n插件将向当前对话发送一条分析请求，利用 AI 生成标题、摘要和分类。\n\n分析完成后会自动删除该请求（如果可能）。\n\n是否继续？"
+    )
+    if (!confirmed) return
+
+    showToast("正在请求 AI 分析对话...", "warning")
+    console.log("[Memflow] 开始智能导出...")
+
+    // 2. 提取当前对话
+    const conversation = currentAdapter.extractConversation()
+    if (conversation.messages.length === 0) {
+      showToast("没有找到对话内容", "warning")
+      return
+    }
+
+    // 3. 生成智能元数据
+    const metadataGen = createMetadataGenerator()
+    // 使用 generateWithAI，传入适配器和自动删除选项
+    const metadata = await metadataGen.generateWithAI(
+      conversation,
+      currentAdapter,
+      true // autoDelete = true
+    )
+
+    console.log("[Memflow] 智能元数据生成完成:", metadata)
+    showToast("AI 分析完成，正在导出...", "success")
+
+    // 4. 后续导出流程与普通模式一致
+    // 重新提取对话（因为可能包含 AI 分析的临时消息，虽然 generateWithAI 内部可能已经清理，但为了保险最好重新提取一次或过滤）
+    // 注意：generateWithAI 内部如果删除了消息，页面 DOM 会更新。
+    // 这里我们直接使用 metadata 进行构建，但 conversation 内容还是旧的。
+    // 如果 AI 分析消息被删除了，DOM 恢复原状，理论上不需要重新提取，除非我们想确保 content 不包含分析过程。
+    // 简单起见，我们信任 metadata 已经生成好，直接导出原始 conversation（根据 adapter 实现，extractConversation 每次都会重新读 DOM 吗？
+    // base-adapter 的 extractConversation 是读取当前 DOM。所以如果 AI 消息已删除，再次提取是安全的。）
+
+    // 再次提取以确保干净（去除可能的残留）
+    const cleanConversation = currentAdapter.extractConversation()
+
+    // 检查扩展连接
+    if (!chrome.runtime?.id || !chrome.storage) {
+      const markdownBuilder = createMarkdownBuilder()
+      const markdown = markdownBuilder.build(cleanConversation, metadata, {
+        contentFormat: "web"
+      })
+      downloadMarkdown(markdown, metadata.title)
+      return
+    }
+
+    const { obsidianConfig } = await chrome.storage.sync.get("obsidianConfig")
+    const markdownBuilder = createMarkdownBuilder()
+    const markdown = markdownBuilder.build(cleanConversation, metadata, {
+      contentFormat: obsidianConfig?.contentFormat || "web"
+    })
+
+    if (!obsidianConfig || !obsidianConfig.vaultName) {
+      downloadMarkdown(markdown, metadata.title)
+      return
+    }
+
+    if (obsidianConfig.exportMethod === "uri") {
+      const handler = new ObsidianURIHandler(obsidianConfig)
+      const result = await handler.exportToObsidian(markdown, metadata)
+      showToast(result.message, result.success ? "success" : "warning")
+    } else {
+      downloadMarkdown(markdown, metadata.title)
+      showToast("导出成功", "success")
+    }
+  } catch (error) {
+    console.error("智能导出失败:", error)
+    showToast(`智能导出失败: ${error.message}`, "error")
+  }
+}
+
 function downloadMarkdown(content: string, filename: string) {
   const safeFilename = filename.replace(/[<>:"/\|?*]/g, "-").slice(0, 50)
   const blob = new Blob([content], { type: "text/markdown;charset=utf-8" })
@@ -136,7 +217,8 @@ function createToolbarButton() {
     button.title = "导出到 Obsidian"
 
     // 使用 DeepSeek 原生类名
-    button.className = "ds-icon-button ds-icon-button--xl ds-icon-button--sizing-container"
+    button.className =
+      "ds-icon-button ds-icon-button--xl ds-icon-button--sizing-container"
 
     button.innerHTML = `
       <div class="ds-icon-button__hover-bg"></div>
@@ -311,7 +393,19 @@ function createToolbarButton() {
   `
   document.head.appendChild(style)
 
-  button.addEventListener("click", async () => {
+  button.addEventListener("click", async (e) => {
+    // 如果按住了 Shift 键，或者在设置中默认开启了智能模式（后续实现），则触发智能导出
+    // 这里暂时使用 Shift+Click 或 右键 作为快捷方式
+    if (e.shiftKey) {
+      button.classList.add("exporting")
+      try {
+        await exportSmart()
+      } finally {
+        button.classList.remove("exporting")
+      }
+      return
+    }
+
     button.classList.add("exporting")
     try {
       await exportDirect()
@@ -319,6 +413,20 @@ function createToolbarButton() {
       button.classList.remove("exporting")
     }
   })
+
+  // 添加右键菜单触发智能导出
+  button.addEventListener("contextmenu", async (e) => {
+    e.preventDefault() // 阻止默认右键菜单
+    button.classList.add("exporting")
+    try {
+      await exportSmart()
+    } finally {
+      button.classList.remove("exporting")
+    }
+  })
+
+  // 更新 Tooltip 提示
+  button.title = "左键: 直接导出 | 右键/Shift+左键: 智能导出 (AI生成标题摘要)"
 
   // 如果有标记的分享按钮，作为同级元素插入到它前面
   const shareBtn = (toolbar as any).__memflowShareButton
@@ -329,10 +437,10 @@ function createToolbarButton() {
     // 设置适当的间距 - 根据不同网站微调
     if (window.location.host.includes("deepseek.com")) {
       // DeepSeek 微调：距离分享按钮更近，垂直居中
-      button.style.marginRight = "4px"   // 水平间距（右侧）
-      button.style.marginLeft = "0px"   // 水平间距（左侧）- 向右移动
-      button.style.marginTop = "8px"   // 垂直位置（上）- 向上移动
-      button.style.marginBottom = "0px"  // 垂直位置（下）
+      button.style.marginRight = "4px" // 水平间距（右侧）
+      button.style.marginLeft = "0px" // 水平间距（左侧）- 向右移动
+      button.style.marginTop = "8px" // 垂直位置（上）- 向上移动
+      button.style.marginBottom = "0px" // 垂直位置（下）
     } else if (window.location.host.includes("doubao.com")) {
       button.style.marginRight = "30px"
     } else {
@@ -365,12 +473,12 @@ function findToolbarLocation(): HTMLElement | null {
     "button:has(svg[data-icon='share'])", // 通过图标查找
     // DeepSeek Share Button - 基于建议的稳健选择器
     // 通过SVG路径特征识别分享按钮（最可靠）
-    "svg path[d*='M7.95889 1.52285']",  // DeepSeek分享图标SVG路径特征
-    "[class*='ds-icon']:has(svg path[d*='M7.95889'])",  // 包含特定SVG的ds-icon
+    "svg path[d*='M7.95889 1.52285']", // DeepSeek分享图标SVG路径特征
+    "[class*='ds-icon']:has(svg path[d*='M7.95889'])", // 包含特定SVG的ds-icon
     // 排除内部元素（hover-bg, focus-ring等），只匹配按钮容器
     "[class*='ds-icon-button']:not([class*='hover-bg']):not([class*='focus-ring']):not([class*='icon'])",
-    "div[role='button'].ds-icon-button--xl:last-child",  // 最稳健：大号按钮的最后一个
-    "div._2be88ba > div:last-child[role='button']",  // 父容器最后一个按钮
+    "div[role='button'].ds-icon-button--xl:last-child", // 最稳健：大号按钮的最后一个
+    "div._2be88ba > div:last-child[role='button']", // 父容器最后一个按钮
     //"div[role='button'].ds-icon-button--sizing-container",  // 尺寸容器
     // "div._57370c5.ds-icon-button",  // 精确类名组合（可能变动）
     // ".ds-icon-button--xl[role='button']",  // 大号按钮且带 role，匹配到左侧新建对话
@@ -394,11 +502,11 @@ function findToolbarLocation(): HTMLElement | null {
 
         // 如果当前元素不是交互按钮，向上查找
         const tagName = shareBtn.tagName.toLowerCase()
-        const role = shareBtn.getAttribute('role')
+        const role = shareBtn.getAttribute("role")
 
-        if (tagName !== 'button' && role !== 'button') {
+        if (tagName !== "button" && role !== "button") {
           // 先尝试查找 button
-          targetBtn = shareBtn.closest('button')
+          targetBtn = shareBtn.closest("button")
           // 如果没找到，尝试查找 role="button" 的元素（如 DeepSeek）
           if (!targetBtn) {
             targetBtn = shareBtn.closest('[role="button"]')
@@ -409,14 +517,17 @@ function findToolbarLocation(): HTMLElement | null {
           // 对于 DeepSeek，需要额外验证：确保是最后一个按钮（分享按钮通常在右侧最后）
           const parent = targetBtn.parentElement
           if (parent) {
-            const siblings = Array.from(parent.children).filter(el =>
-              el.matches('[role="button"], button') || el.querySelector('[role="button"], button')
+            const siblings = Array.from(parent.children).filter(
+              (el) =>
+                el.matches('[role="button"], button') ||
+                el.querySelector('[role="button"], button')
             )
-            const isLastButton = siblings.indexOf(targetBtn) === siblings.length - 1
+            const isLastButton =
+              siblings.indexOf(targetBtn) === siblings.length - 1
 
-            if (isLastButton || window.location.host.includes('deepseek')) {
+            if (isLastButton || window.location.host.includes("deepseek")) {
               console.log("[Memflow] 已定位到分享按钮 (最后一个):", selector)
-                ; (targetBtn as any).__memflowShareButton = targetBtn
+              ;(targetBtn as any).__memflowShareButton = targetBtn
               return targetBtn as HTMLElement
             }
           }
@@ -427,69 +538,69 @@ function findToolbarLocation(): HTMLElement | null {
     }
   }
 
-  // // 策略 2: 常见的顶部右侧容器 (Header Right)
-  // const headerRightSelectors = [
-  //   // ChatGPT
-  //   ".sticky.top-0 .flex.items-center:last-child",
-  //   ".sticky.top-0 .flex.gap-2", // ChatGPT 新的顶部栏结构
-  //   "[data-testid='header-user-menu-button']",
-  //   "nav[aria-label='Chat history'] + div", // ChatGPT 新界面
+  // 策略 2: 常见的顶部右侧容器 (Header Right)
+  const headerRightSelectors = [
+    // ChatGPT
+    ".sticky.top-0 .flex.items-center:last-child",
+    ".sticky.top-0 .flex.gap-2", // ChatGPT 新的顶部栏结构
+    "[data-testid='header-user-menu-button']",
+    "nav[aria-label='Chat history'] + div", // ChatGPT 新界面
 
-  //   // Kimi
-  //   ".header-right .action-group",
-  //   ".header-right",
-  //   ".chat-header .action-group",
-  //   ".chat-header .header-actions",
-  //   "[class*='chat-header'] [class*='action']",
-  //   ".toolbar",
-  //   ".chat-toolbar",
-  //   "[class*='Toolbar']",
-  //   ".kimi-header .actions",
-  //   "[data-testid='chat-toolbar']",
+    // Kimi
+    ".header-right .action-group",
+    ".header-right",
+    ".chat-header .action-group",
+    ".chat-header .header-actions",
+    "[class*='chat-header'] [class*='action']",
+    ".toolbar",
+    ".chat-toolbar",
+    "[class*='Toolbar']",
+    ".kimi-header .actions",
+    "[data-testid='chat-toolbar']",
 
-  //   // Gemini
-  //   ".gb_Ld", // Google 顶部栏类名
-  //   "header div[role='toolbar']",
-  //   "[data-test-id='header-actions']",
-  //   ".gemini-header .actions",
-  //   "[class*='gemini'] [class*='header'] [class*='action']",
+    // Gemini
+    ".gb_Ld", // Google 顶部栏类名
+    "header div[role='toolbar']",
+    "[data-test-id='header-actions']",
+    ".gemini-header .actions",
+    "[class*='gemini'] [class*='header'] [class*='action']",
 
-  //   // DeepSeek
-  //   "header .header-right",
-  //   "header .header-actions",
+    // DeepSeek
+    "header .header-right",
+    "header .header-actions",
 
-  //   // 通用
-  //   "header .actions",
-  //   "header [role='toolbar']",
-  //   "header > div:last-child",
-  //   ".app-header > div:last-child",
-  //   "[class*='Header'] > div:last-child",
-  //   "#page-header > div:last-child",
-  //   ".top-bar .actions",
-  //   "[class*='topbar'] [class*='action']"
-  // ]
+    // 通用
+    "header .actions",
+    "header [role='toolbar']",
+    "header > div:last-child",
+    ".app-header > div:last-child",
+    "[class*='Header'] > div:last-child",
+    "#page-header > div:last-child",
+    ".top-bar .actions",
+    "[class*='topbar'] [class*='action']"
+  ]
 
-  // for (const selector of headerRightSelectors) {
-  //   try {
-  //     const element = document.querySelector(selector)
-  //     if (element) {
-  //       const wrapper = document.createElement("div")
-  //       wrapper.style.cssText =
-  //         "display: inline-flex; align-items: center; margin: 0 8px;"
+  for (const selector of headerRightSelectors) {
+    try {
+      const element = document.querySelector(selector)
+      if (element) {
+        const wrapper = document.createElement("div")
+        wrapper.style.cssText =
+          "display: inline-flex; align-items: center; margin: 0 8px;"
 
-  //       // 既然是右上角，通常插入到最前面比较合适
-  //       if (element.firstChild) {
-  //         element.insertBefore(wrapper, element.firstChild)
-  //       } else {
-  //         element.appendChild(wrapper)
-  //       }
-  //       console.log("[Memflow] 已定位到 Header Right:", selector)
-  //       return wrapper
-  //     }
-  //   } catch (e) {
-  //     // 忽略错误
-  //   }
-  // }
+        // 既然是右上角，通常插入到最前面比较合适
+        if (element.firstChild) {
+          element.insertBefore(wrapper, element.firstChild)
+        } else {
+          element.appendChild(wrapper)
+        }
+        console.log("[Memflow] 已定位到 Header Right:", selector)
+        return wrapper
+      }
+    } catch (e) {
+      // 忽略错误
+    }
+  }
 
   // 策略 3: 查找顶部导航栏
   const headerSelectors = [

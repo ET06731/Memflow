@@ -8,6 +8,85 @@ interface ObsidianConfig {
   exportMethod: "uri" | "download"
 }
 
+// 多语言配置
+type Lang = "zh" | "en"
+
+const i18n = {
+  zh: {
+    vaultName: "仓库名称",
+    vaultNamePlaceholder: "例如：KnowledgeBase",
+    vaultNameHint: "必须与 Obsidian 仓库名称完全一致",
+    defaultFolder: "默认文件夹",
+    defaultFolderPlaceholder: "AI对话/DeepSeek",
+    defaultFolderHint: "使用 / 分隔嵌套文件夹，不要以 / 开头",
+    filenameFormat: "文件名格式",
+    filenameFormatPlaceholder: "{{date}}-{{title}}",
+    filenameFormatHint: "可用变量：{{date}} {{title}} {{platform}}",
+    contentFormat: "内容格式",
+    callout: "引用块",
+    calloutDesc: "Obsidian 风格",
+    web: "网页",
+    webDesc: "原始风格",
+    exportMethod: "导出方式",
+    obsidianUri: "Obsidian URI",
+    obsidianUriDesc: "直接导入",
+    download: "下载",
+    downloadDesc: "保存为文件",
+    saveConfig: "保存配置",
+    saved: "已保存",
+    essentialNotes: "重要提示",
+    helpItems: [
+      "首次使用需要允许 Obsidian URI 协议访问",
+      "仓库名称区分大小写，必须完全匹配",
+      "不存在的文件夹会自动创建",
+      "URI 方式失败时会自动降级为下载",
+      "内容过长时会自动复制到剪贴板，请按 Ctrl+V 粘贴"
+    ],
+    version: "v1.0.0"
+  },
+  en: {
+    vaultName: "Vault Name",
+    vaultNamePlaceholder: "e.g., KnowledgeBase",
+    vaultNameHint: "Must match your Obsidian vault name exactly",
+    defaultFolder: "Default Folder",
+    defaultFolderPlaceholder: "AI-Chats/DeepSeek",
+    defaultFolderHint: "Use / for nested folders, no leading slash",
+    filenameFormat: "Filename Format",
+    filenameFormatPlaceholder: "{{date}}-{{title}}",
+    filenameFormatHint: "Available: {{date}} {{title}} {{platform}}",
+    contentFormat: "Content Format",
+    callout: "Callout",
+    calloutDesc: "Obsidian Style",
+    web: "Web",
+    webDesc: "Original Style",
+    exportMethod: "Export Method",
+    obsidianUri: "Obsidian URI",
+    obsidianUriDesc: "Direct import",
+    download: "Download",
+    downloadDesc: "Save as file",
+    saveConfig: "Save Configuration",
+    saved: "Saved",
+    essentialNotes: "Essential Notes",
+    helpItems: [
+      "First use requires allowing Obsidian URI scheme access",
+      "Vault names are case-sensitive and must match exactly",
+      "Non-existent folders will be created automatically",
+      "Fallback to download if URI method fails",
+      "Long content will be copied to clipboard, press Ctrl+V to paste"
+    ],
+    version: "v1.0.0"
+  }
+}
+
+// 检测语言
+function detectLanguage(): Lang {
+  const lang = navigator.language || (navigator as any).userLanguage
+  if (lang && lang.toLowerCase().startsWith("zh")) {
+    return "zh"
+  }
+  return "en"
+}
+
 // Custom hooks for animations
 function useRipple() {
   const [ripples, setRipples] = useState<
@@ -29,9 +108,12 @@ function useRipple() {
 }
 
 function Popup() {
+  const lang = detectLanguage()
+  const t = i18n[lang]
+
   const [config, setConfig] = useState<ObsidianConfig>({
     vaultName: "",
-    defaultFolder: "AI对话",
+    defaultFolder: lang === "zh" ? "AI对话" : "AI-Chats",
     fileNameFormat: "{{date}}-{{title}}",
     contentFormat: "callout",
     exportMethod: "download"
@@ -106,9 +188,9 @@ function Popup() {
         }
         
         .popup-container {
-          width: 420px;
+          width: 360px;
           background: linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #0d0d12 100%);
-          font-family: 'JetBrains Mono', monospace;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           color: #e5e5e5;
           position: relative;
           overflow: hidden;
@@ -201,42 +283,20 @@ function Popup() {
         }
         
         .form-section {
-          padding: 24px;
-        }
-        
-        .section-title {
-          font-family: 'Cinzel', serif;
-          font-size: 12px;
-          font-weight: 600;
-          color: #f59e0b;
-          margin: 0 0 20px 0;
-          letter-spacing: 3px;
-          text-transform: uppercase;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        
-        .section-title::after {
-          content: '';
-          flex: 1;
-          height: 1px;
-          background: linear-gradient(90deg, rgba(245, 158, 11, 0.5) 0%, transparent 100%);
+          padding: 16px 20px;
         }
         
         .form-group {
-          margin-bottom: 20px;
+          margin-bottom: 14px;
           position: relative;
         }
         
         .form-label {
           display: block;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
           color: #aaa;
-          margin-bottom: 8px;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
+          margin-bottom: 6px;
         }
         
         .form-label .required {
@@ -250,16 +310,16 @@ function Popup() {
         
         .form-input {
           width: 100%;
-          padding: 12px 14px;
+          padding: 10px 12px;
           background: rgba(255, 255, 255, 0.05);
           border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 13px;
+          border-radius: 6px;
+          font-family: inherit;
+          font-size: 14px;
           color: #e5e5e5;
           box-sizing: border-box;
           outline: none;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
           pointer-events: auto;
           position: relative;
         }
@@ -280,16 +340,15 @@ function Popup() {
         }
         
         .input-hint {
-          font-size: 10px;
+          font-size: 11px;
           color: #666;
-          margin-top: 6px;
-          font-style: italic;
+          margin-top: 4px;
         }
         
         .method-selector {
           display: flex;
-          gap: 10px;
-          margin-bottom: 20px;
+          gap: 8px;
+          margin-bottom: 14px;
         }
         
         .method-option {
@@ -305,12 +364,12 @@ function Popup() {
         
         .method-label {
           display: block;
-          padding: 14px 12px;
+          padding: 10px 8px;
           background: rgba(255, 255, 255, 0.02);
           border: 1px solid rgba(255, 255, 255, 0.04);
-          border-radius: 10px;
+          border-radius: 8px;
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
           text-align: center;
         }
         
@@ -326,13 +385,13 @@ function Popup() {
         }
         
         .method-icon {
-          font-size: 20px;
-          margin-bottom: 6px;
+          font-size: 18px;
+          margin-bottom: 4px;
           display: block;
         }
         
         .method-title {
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
           color: #e5e5e5;
           display: block;
@@ -340,7 +399,7 @@ function Popup() {
         }
         
         .method-desc {
-          font-size: 9px;
+          font-size: 10px;
           color: #888;
           display: block;
         }
@@ -361,18 +420,17 @@ function Popup() {
         
         .save-button {
           width: 100%;
-          padding: 14px 20px;
+          padding: 12px 16px;
           border: none;
-          border-radius: 10px;
-          font-family: 'Cinzel', serif;
-          font-size: 13px;
+          border-radius: 8px;
+          font-family: inherit;
+          font-size: 14px;
           font-weight: 600;
-          letter-spacing: 1px;
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
           position: relative;
           overflow: hidden;
-          text-transform: uppercase;
+          margin-top: 4px;
         }
         
         .save-button:not(:disabled) {
@@ -405,19 +463,16 @@ function Popup() {
         }
         
         .help-section {
-          padding: 20px 24px;
+          padding: 14px 20px;
           background: rgba(245, 158, 11, 0.02);
           border-top: 1px solid rgba(245, 158, 11, 0.06);
         }
         
         .help-title {
-          font-family: 'Cinzel', serif;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
           color: #f59e0b;
-          margin: 0 0 12px 0;
-          letter-spacing: 2px;
-          text-transform: uppercase;
+          margin: 0 0 8px 0;
         }
         
         .help-list {
@@ -427,11 +482,11 @@ function Popup() {
         }
         
         .help-item {
-          font-size: 11px;
+          font-size: 12px;
           color: #888;
-          padding: 6px 0 6px 16px;
+          padding: 4px 0 4px 14px;
           position: relative;
-          line-height: 1.5;
+          line-height: 1.4;
         }
         
         .help-item::before {
@@ -444,15 +499,14 @@ function Popup() {
         }
         
         .footer {
-          padding: 14px 24px;
+          padding: 10px 20px;
           background: rgba(0, 0, 0, 0.3);
           border-top: 1px solid rgba(255, 255, 255, 0.03);
-          font-size: 10px;
+          font-size: 11px;
           color: #555;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          letter-spacing: 0.5px;
         }
         
         .footer a {
@@ -470,20 +524,12 @@ function Popup() {
         <div className="noise-overlay" />
         <div className="ambient-glow" />
 
-        {/* Header */}
-        <div className="header">
-          <div className="brand-icon">◈</div>
-          <h1 className="brand-title">Memflow</h1>
-          <p className="brand-subtitle">Preserving the flow of thought</p>
-        </div>
-
         {/* Config Section */}
         <div className="form-section">
-          <h2 className="section-title">Configuration</h2>
 
           <div className="form-group">
             <label className="form-label">
-              Vault Name<span className="required">*</span>
+              {t.vaultName}<span className="required">*</span>
             </label>
             <div
               className={`input-wrapper ${focusedField === "vault" ? "focused" : ""}`}>
@@ -496,16 +542,16 @@ function Popup() {
                 }
                 onFocus={() => setFocusedField("vault")}
                 onBlur={() => setFocusedField(null)}
-                placeholder="e.g., KnowledgeBase"
+                placeholder={t.vaultNamePlaceholder}
               />
             </div>
             <span className="input-hint">
-              Must match your Obsidian vault name exactly
+              {t.vaultNameHint}
             </span>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Default Folder</label>
+            <label className="form-label">{t.defaultFolder}</label>
             <div
               className={`input-wrapper ${focusedField === "folder" ? "focused" : ""}`}>
               <input
@@ -517,16 +563,16 @@ function Popup() {
                 }
                 onFocus={() => setFocusedField("folder")}
                 onBlur={() => setFocusedField(null)}
-                placeholder="AI-Chats/DeepSeek"
+                placeholder={t.defaultFolderPlaceholder}
               />
             </div>
             <span className="input-hint">
-              Use / for nested folders, no leading slash
+              {t.defaultFolderHint}
             </span>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Filename Format</label>
+            <label className="form-label">{t.filenameFormat}</label>
             <div
               className={`input-wrapper ${focusedField === "format" ? "focused" : ""}`}>
               <input
@@ -538,16 +584,16 @@ function Popup() {
                 }
                 onFocus={() => setFocusedField("format")}
                 onBlur={() => setFocusedField(null)}
-                placeholder="{{date}}-{{title}}"
+                placeholder={t.filenameFormatPlaceholder}
               />
             </div>
             <span className="input-hint">
-              Available: {"{{date}} {{title}} {{platform}}"}
+              {t.filenameFormatHint}
             </span>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Content Format</label>
+            <label className="form-label">{t.contentFormat}</label>
             <div className="method-selector">
               <div className="method-option">
                 <input
@@ -562,8 +608,8 @@ function Popup() {
                 <label htmlFor="callout" className="method-label">
                   <span className="method-badge">New</span>
                   <span className="method-icon">❝❞</span>
-                  <span className="method-title">Callout</span>
-                  <span className="method-desc">Obsidian Style</span>
+                  <span className="method-title">{t.callout}</span>
+                  <span className="method-desc">{t.calloutDesc}</span>
                 </label>
               </div>
               <div className="method-option">
@@ -580,15 +626,15 @@ function Popup() {
                 />
                 <label htmlFor="web" className="method-label">
                   <span className="method-icon">📄</span>
-                  <span className="method-title">Web</span>
-                  <span className="method-desc">Original Style</span>
+                  <span className="method-title">{t.web}</span>
+                  <span className="method-desc">{t.webDesc}</span>
                 </label>
               </div>
             </div>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Export Method</label>
+            <label className="form-label">{t.exportMethod}</label>
             <div className="method-selector">
               <div className="method-option">
                 <input
@@ -601,8 +647,8 @@ function Popup() {
                 <label htmlFor="uri" className="method-label">
                   <span className="method-badge">Best</span>
                   <span className="method-icon">◉</span>
-                  <span className="method-title">Obsidian URI</span>
-                  <span className="method-desc">Direct import</span>
+                  <span className="method-title">{t.obsidianUri}</span>
+                  <span className="method-desc">{t.obsidianUriDesc}</span>
                 </label>
               </div>
               <div className="method-option">
@@ -617,8 +663,8 @@ function Popup() {
                 />
                 <label htmlFor="download" className="method-label">
                   <span className="method-icon">▼</span>
-                  <span className="method-title">Download</span>
-                  <span className="method-desc">Save as file</span>
+                  <span className="method-title">{t.download}</span>
+                  <span className="method-desc">{t.downloadDesc}</span>
                 </label>
               </div>
             </div>
@@ -630,7 +676,7 @@ function Popup() {
             onClick={saveConfig}
             disabled={!isValid}
             style={buttonStyle}>
-            {saved ? "◉ Saved" : "Save Configuration"}
+            {saved ? `◉ ${t.saved}` : t.saveConfig}
             {ripples.map((ripple) => (
               <span
                 key={ripple.id}
@@ -643,20 +689,13 @@ function Popup() {
 
         {/* Help Section */}
         <div className="help-section">
-          <h3 className="help-title">Essential Notes</h3>
+          <h3 className="help-title">{t.essentialNotes}</h3>
           <ul className="help-list">
-            <li className="help-item">
-              First use requires allowing Obsidian URI scheme access
-            </li>
-            <li className="help-item">
-              Vault names are case-sensitive and must match exactly
-            </li>
-            <li className="help-item">
-              Non-existent folders will be created automatically
-            </li>
-            <li className="help-item">
-              Fallback to download if URI method fails
-            </li>
+            {t.helpItems.map((item, index) => (
+              <li key={index} className="help-item">
+                {item}
+              </li>
+            ))}
           </ul>
         </div>
 
