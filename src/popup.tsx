@@ -6,6 +6,7 @@ interface ObsidianConfig {
   fileNameFormat: string
   contentFormat: "callout" | "web"
   exportMethod: "uri" | "download"
+  autoOpen: boolean
 }
 
 // 多语言配置
@@ -32,6 +33,8 @@ const i18n = {
     obsidianUriDesc: "直接导入",
     download: "下载",
     downloadDesc: "保存为文件",
+    autoOpen: "导出后自动打开",
+    autoOpenDesc: "自动在 Obsidian 中打开对应笔记",
     saveConfig: "保存配置",
     saved: "已保存",
     essentialNotes: "重要提示",
@@ -40,7 +43,7 @@ const i18n = {
       "仓库名称区分大小写，必须完全匹配",
       "不存在的文件夹会自动创建",
       "URI 方式失败时会自动降级为下载",
-      "内容过长时会自动复制到剪贴板，请按 Ctrl+V 粘贴"
+      "关闭「自动打开」可在后台静默导出"
     ],
     version: "v1.0.0"
   },
@@ -64,6 +67,8 @@ const i18n = {
     obsidianUriDesc: "Direct import",
     download: "Download",
     downloadDesc: "Save as file",
+    autoOpen: "Auto-open after export",
+    autoOpenDesc: "Automatically open the note in Obsidian",
     saveConfig: "Save Configuration",
     saved: "Saved",
     essentialNotes: "Essential Notes",
@@ -72,7 +77,7 @@ const i18n = {
       "Vault names are case-sensitive and must match exactly",
       "Non-existent folders will be created automatically",
       "Fallback to download if URI method fails",
-      "Long content will be copied to clipboard, press Ctrl+V to paste"
+      "Disable 'Auto-open' for silent background export"
     ],
     version: "v1.0.0"
   }
@@ -116,7 +121,8 @@ function Popup() {
     defaultFolder: lang === "zh" ? "AI对话" : "AI-Chats",
     fileNameFormat: "{{date}}-{{title}}",
     contentFormat: "callout",
-    exportMethod: "download"
+    exportMethod: "download",
+    autoOpen: true
   })
 
   const [saved, setSaved] = useState(false)
@@ -417,6 +423,48 @@ function Popup() {
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
+
+        .checkbox-label {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          padding: 12px;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .checkbox-label:hover {
+          background: rgba(245, 158, 11, 0.05);
+          border-color: rgba(245, 158, 11, 0.2);
+        }
+
+        .checkbox-input {
+          width: 18px;
+          height: 18px;
+          margin: 2px 0 0 0;
+          accent-color: #f59e0b;
+          cursor: pointer;
+        }
+
+        .checkbox-text {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .checkbox-title {
+          font-size: 13px;
+          font-weight: 500;
+          color: #e5e5e5;
+        }
+
+        .checkbox-desc {
+          font-size: 11px;
+          color: #888;
+        }
         
         .save-button {
           width: 100%;
@@ -526,10 +574,10 @@ function Popup() {
 
         {/* Config Section */}
         <div className="form-section">
-
           <div className="form-group">
             <label className="form-label">
-              {t.vaultName}<span className="required">*</span>
+              {t.vaultName}
+              <span className="required">*</span>
             </label>
             <div
               className={`input-wrapper ${focusedField === "vault" ? "focused" : ""}`}>
@@ -545,9 +593,7 @@ function Popup() {
                 placeholder={t.vaultNamePlaceholder}
               />
             </div>
-            <span className="input-hint">
-              {t.vaultNameHint}
-            </span>
+            <span className="input-hint">{t.vaultNameHint}</span>
           </div>
 
           <div className="form-group">
@@ -566,9 +612,7 @@ function Popup() {
                 placeholder={t.defaultFolderPlaceholder}
               />
             </div>
-            <span className="input-hint">
-              {t.defaultFolderHint}
-            </span>
+            <span className="input-hint">{t.defaultFolderHint}</span>
           </div>
 
           <div className="form-group">
@@ -587,9 +631,7 @@ function Popup() {
                 placeholder={t.filenameFormatPlaceholder}
               />
             </div>
-            <span className="input-hint">
-              {t.filenameFormatHint}
-            </span>
+            <span className="input-hint">{t.filenameFormatHint}</span>
           </div>
 
           <div className="form-group">
@@ -669,6 +711,25 @@ function Popup() {
               </div>
             </div>
           </div>
+
+          {config.exportMethod === "uri" && (
+            <div className="form-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={config.autoOpen}
+                  onChange={(e) =>
+                    setConfig({ ...config, autoOpen: e.target.checked })
+                  }
+                  className="checkbox-input"
+                />
+                <span className="checkbox-text">
+                  <span className="checkbox-title">{t.autoOpen}</span>
+                  <span className="checkbox-desc">{t.autoOpenDesc}</span>
+                </span>
+              </label>
+            </div>
+          )}
 
           <button
             ref={saveButtonRef}

@@ -75,10 +75,7 @@ async function exportDirect() {
       const result = await handler.exportToObsidian(markdown, metadata)
 
       if (result.success) {
-        showToast(
-          result.message,
-          result.method === "direct" ? "success" : "warning"
-        )
+        showToast(result.message, "success")
       } else {
         downloadMarkdown(markdown, metadata.title)
         showToast("URI调用失败，已下载文件", "warning")

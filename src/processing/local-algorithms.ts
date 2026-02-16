@@ -191,36 +191,64 @@ export function extractKeywords(text: string, topN = 5): string[] {
  * 生成标题（基于内容关键词的智能标题）
  */
 export function generateTitle(text: string, maxLength = 50): string {
-  // 先清理HTML标签
-  const cleanText = text
-    .replace(/<[^>]+>/g, " ") // 移除所有HTML标签
-    .replace(/\s+/g, " ") // 合并多余空格
+  // 1. 预处理：清理HTML和多余空格
+  let cleanText = text
+    .replace(/<[^>]+>/g, " ") // 移除HTML
+    .replace(/\s+/g, " ") // 合并空格
     .trim()
 
-  // 1. 尝试提取第一句话（最常见的情况）
+  // 2. 去除常见的前缀干扰词 (AI/User 标记)
+  const prefixesToRemove = [
+    /^你说[：:]\s*/i,
+    /^you said[：:]\s*/i,
+    /^chatgpt[：:]\s*/i,
+    /^ai[：:]\s*/i,
+    /^user[：:]\s*/i,
+    /^assistant[：:]\s*/i,
+    /^bot[：:]\s*/i,
+    /^question[：:]\s*/i,
+    /^answer[：:]\s*/i,
+    /^问题[：:]\s*/i,
+    /^回答[：:]\s*/i
+  ]
+
+  prefixesToRemove.forEach((regex) => {
+    cleanText = cleanText.replace(regex, "")
+  })
+
+  // 3. 提取核心内容
+  // 先尝试按换行分割，取第一行
   const firstLine = cleanText.split("\n")[0]?.trim() || ""
-  const firstSentence =
-    firstLine.match(/^[^.!?。！？]+/)?.[0]?.trim() || firstLine
 
-  // 如果第一句话长度适中且有意义（不是简单的"你好"之类），直接使用
-  if (firstSentence.length >= 5 && firstSentence.length <= maxLength) {
-    return firstSentence
-  }
+  // 提取第一句话（按句号/问号/感叹号分割）
+  let title = firstLine.match(/^[^.!?。！？\n]+/)?.[0]?.trim() || firstLine
 
-  // 2. 如果第一句话太短（如"你好"），尝试从前200个字符中提取关键词组合标题
-  if (firstSentence.length < 5) {
+  // 4. 后处理：去除首尾标点符号
+  // 去除句尾标点
+  title = title.replace(/[.!?。！？;；]+$/, "")
+  // 去除首尾引号/括号
+  title = title.replace(/^["'“‘『【(（]+|["'”’』】)）]+$/g, "")
+  // 去除文件名非法字符 (Windows/Unix)
+  title = title.replace(/[<>:"/\\|?*]/g, " ")
+
+  title = title.trim()
+
+  // 5. 智能兜底策略
+
+  // 如果标题太短（如"你好"），尝试从前200个字符中提取关键词组合标题
+  if (title.length < 5) {
     const keywords = extractKeywords(cleanText.slice(0, 500), 3)
     if (keywords.length > 0) {
       return keywords.join(" ") + " 对话"
     }
   }
 
-  // 3. 如果第一句话太长，截断
-  if (firstSentence.length > maxLength) {
-    return firstSentence.slice(0, maxLength) + "..."
+  // 如果标题太长，截断
+  if (title.length > maxLength) {
+    return title.slice(0, maxLength).trim() + "..."
   }
 
-  return firstSentence || "未命名对话"
+  return title || "对话记录"
 }
 
 /**
