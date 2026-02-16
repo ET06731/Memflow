@@ -457,13 +457,14 @@ function findToolbarLocation(): HTMLElement | null {
   // 策略 1: 寻找"分享"按钮 (Share Button) 并创建 flex 容器插入到它左边
   // 使用 Material Design 最佳实践：在同一 flex 容器中水平排列
   const shareButtonSelectors = [
-    "[data-testid='share-chat-button']",
-    // ChatGPT - 最新界面
+    // ChatGPT - 最新界面 (优先级最高)
     "button[data-testid='share-chat-button']", // 标准测试ID
-    "button[aria-label='分享']", // 精确匹配中文标签
-    "button.btn-ghost:has-text('分享')", // Ghost按钮包含"分享"文本
+    "[data-testid='share-chat-button']", // 属性选择器
+    "button[aria-label='分享']", // 中文标签
+    "button.btn-ghost:has(svg)", // Ghost按钮包含SVG
     "button:has(svg use[href*='sprites-core'])", // ChatGPT特定sprite图标
-    "button:has(svg[width='20'][height='20'])", // ChatGPT分享图标尺寸
+    "button:has(svg[width='20'][height='20'])", // 分享图标尺寸
+    "button:has-text('分享')", // 包含"分享"文本
     // 豆包 (Doubao)
     "[data-testid='thread_share_btn_right_side']",
     // 通用选择器
@@ -519,7 +520,7 @@ function findToolbarLocation(): HTMLElement | null {
         }
 
         if (targetBtn && targetBtn.parentNode) {
-          // 对于 DeepSeek，需要额外验证：确保是最后一个按钮（分享按钮通常在右侧最后）
+          // 对于 DeepSeek 和 ChatGPT，需要额外验证：确保是最后一个按钮（分享按钮通常在右侧最后）
           const parent = targetBtn.parentElement
           if (parent) {
             const siblings = Array.from(parent.children).filter(
@@ -530,9 +531,23 @@ function findToolbarLocation(): HTMLElement | null {
             const isLastButton =
               siblings.indexOf(targetBtn) === siblings.length - 1
 
-            if (isLastButton || window.location.host.includes("deepseek")) {
-              console.log("[Memflow] 已定位到分享按钮 (最后一个):", selector)
-                ; (targetBtn as any).__memflowShareButton = targetBtn
+            // 放宽限制：DeepSeek 和 ChatGPT 都接受最后一个按钮，或者只要匹配到就接受
+            const isChatGPT =
+              window.location.host.includes("chatgpt") ||
+              window.location.host.includes("openai")
+            const isDeepSeek = window.location.host.includes("deepseek")
+
+            if (isLastButton || isDeepSeek || isChatGPT) {
+              console.log(
+                "[Memflow] 已定位到分享按钮:",
+                selector,
+                isChatGPT
+                  ? "(ChatGPT)"
+                  : isDeepSeek
+                    ? "(DeepSeek)"
+                    : "(最后一个)"
+              )
+              ;(targetBtn as any).__memflowShareButton = targetBtn
               return targetBtn as HTMLElement
             }
           }
