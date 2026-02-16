@@ -531,13 +531,16 @@ function findToolbarLocation(): HTMLElement | null {
             const isLastButton =
               siblings.indexOf(targetBtn) === siblings.length - 1
 
-            // 放宽限制：DeepSeek 和 ChatGPT 都接受最后一个按钮，或者只要匹配到就接受
+            // 放宽限制：主要平台都接受，不强制要求最后一个按钮
             const isChatGPT =
               window.location.host.includes("chatgpt") ||
               window.location.host.includes("openai")
             const isDeepSeek = window.location.host.includes("deepseek")
+            const isGemini =
+              window.location.host.includes("gemini") ||
+              window.location.host.includes("google")
 
-            if (isLastButton || isDeepSeek || isChatGPT) {
+            if (isLastButton || isDeepSeek || isChatGPT || isGemini) {
               console.log(
                 "[Memflow] 已定位到分享按钮:",
                 selector,
@@ -545,7 +548,9 @@ function findToolbarLocation(): HTMLElement | null {
                   ? "(ChatGPT)"
                   : isDeepSeek
                     ? "(DeepSeek)"
-                    : "(最后一个)"
+                    : isGemini
+                      ? "(Gemini)"
+                      : "(最后一个)"
               )
               ;(targetBtn as any).__memflowShareButton = targetBtn
               return targetBtn as HTMLElement
