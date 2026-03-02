@@ -546,6 +546,34 @@ function Popup() {
           font-weight: bold;
         }
         
+        .quick-export-btn {
+          width: 100%;
+          padding: 14px 16px;
+          margin-bottom: 16px;
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+          border: none;
+          border-radius: 10px;
+          font-family: inherit;
+          font-size: 14px;
+          font-weight: 600;
+          color: #000;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+        
+        .quick-export-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+        }
+        
+        .quick-export-btn:active {
+          transform: translateY(0);
+        }
+        
         .footer {
           padding: 10px 20px;
           background: rgba(0, 0, 0, 0.3);
@@ -571,6 +599,54 @@ function Popup() {
       <div className="popup-container">
         <div className="noise-overlay" />
         <div className="ambient-glow" />
+
+        {/* Quick Export Button */}
+        <div className="form-section" style={{ paddingBottom: 0 }}>
+          <button
+            className="quick-export-btn"
+            onClick={async () => {
+              try {
+                const [tab] = await chrome.tabs.query({
+                  active: true,
+                  currentWindow: true
+                })
+                if (tab.id) {
+                  await chrome.tabs.sendMessage(tab.id, {
+                    action: "triggerExport"
+                  })
+                }
+              } catch (e) {
+                alert("请在 AI 对话页面使用导出按钮")
+              }
+            }}>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            {lang === "zh" ? "立即导出当前对话" : "Export Current Chat"}
+          </button>
+          <div
+            style={{
+              fontSize: "11px",
+              color: "#666",
+              textAlign: "center",
+              marginBottom: "16px"
+            }}>
+            {lang === "zh"
+              ? "点击后在当前AI页面触发导出"
+              : "Click to trigger export on AI chat page"}
+          </div>
+        </div>
 
         {/* Config Section */}
         <div className="form-section">

@@ -792,3 +792,29 @@ if (document.readyState === "complete") {
     setTimeout(initMemflow, 500)
   })
 }
+
+// 监听来自 popup 的消息
+chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
+  if (message.action === "triggerExport") {
+    console.log("[Memflow] 收到 popup 导出请求")
+    // 检查是否已有导出按钮
+    const existingBtn = document.getElementById("memflow-export-btn")
+    if (existingBtn) {
+      existingBtn.click()
+      sendResponse({ success: true })
+    } else {
+      // 尝试重新创建按钮并导出
+      initMemflow()
+      setTimeout(() => {
+        const btn = document.getElementById("memflow-export-btn")
+        if (btn) {
+          btn.click()
+          sendResponse({ success: true })
+        } else {
+          sendResponse({ success: false, error: "按钮未找到" })
+        }
+      }, 1500)
+    }
+    return true
+  }
+})
