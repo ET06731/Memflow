@@ -377,7 +377,7 @@ async function exportBiliBiliSmart() {
 
     // 2. 确认提示
     const confirmed = window.confirm(
-      "🤖 B 站视频智能导出\n\n插件将提取视频字幕并使用 AI 生成总结。\n\n💡 请确保视频已开启字幕（点击播放器右下角CC按钮）\n\n是否继续？"
+      "🤖 B 站视频智能导出\n\n插件将提取视频字幕并使用 AI 生成深度结构化长文总结。\n\n💡 请确保视频已开启字幕功能（点击播放器底部控制栏的「字幕」或「AI 字幕」按钮）\n\n是否继续？"
     )
     if (!confirmed) return
 
@@ -400,7 +400,7 @@ async function exportBiliBiliSmart() {
 
     if (!subtitles || subtitles.length === 0) {
       showToast(
-        "❌ 未检测到字幕！请在视频播放器下方点击「字幕/CC」按钮开启字幕后重试",
+        "❌ 未检测到字幕！请在视频播放器下方点击「字幕」或「AI 字幕」按钮开启控制后重试",
         "error"
       )
       console.log("[Memflow Bilibili] 未找到字幕，视频可能没有开启字幕")
@@ -456,12 +456,12 @@ status: 🟢 待整理
 
     let content = ""
 
-    // 标题
+    // 标题 (🤖)
     content += `# ${videoInfo.title}\n\n`
-    content += `> 🤖 由 Memflow AI 总结\n\n`
+    content += `> \u{1F916} 由 Memflow AI 总结\n\n`
 
-    // 视频信息
-    content += `## 📺 视频信息\n\n`
+    // 视频信息 (📺)
+    content += `## \u{1F4FA} 视频信息\n\n`
     content += `- **UP主**: [${videoInfo.uploader}](${videoInfo.uploaderUrl})\n`
     content += `- **发布时间**: ${videoInfo.publishDate}\n`
     content += `- **播放量**: ${videoInfo.views}\n`
@@ -470,31 +470,32 @@ status: 🟢 待整理
     content += `- **收藏**: ${videoInfo.favorites}\n`
     content += `- **标签**: ${videoInfo.tags.join(", ")}\n\n`
 
-    // 简介
+    // 简介 (📝)
     content += `---\n\n`
-    content += `## 📝 视频简介\n\n`
+    content += `## \u{1F4DD} 视频简介\n\n`
     content += `${videoInfo.description || "无简介"}\n\n`
 
-    // AI 总结
+    // AI 总结 (💡)
     content += `---\n\n`
-    content += `## 💡 AI 总结\n\n`
+    content += `## \u{1F4A1} AI 总结\n\n`
     content += `${aiResult.summary}\n\n`
 
-    // 关键词
+    // 关键词 (🏷️)
     content += `---\n\n`
-    content += `## 🏷️ 关键词\n\n`
+    content += `## \u{1F3F7}\u{FE0F} 关键词\n\n`
     content += aiResult.keywords.join(", ") + "\n\n"
 
     // 如果用户开启了保存原文字幕，则追加
+    // 原文字幕 (📑)
     if (topConfig?.saveSubtitles !== false && subtitles) {
       content += `---\n\n`
-      content += `## 📑 字幕原文\n\n`
+      content += `## \u{1F4D1} 字幕原文\n\n`
       content += `${subtitles}\n\n`
     }
 
-    // 底部信息
+    // 底部信息 (📎)
     content += `---\n\n`
-    content += `## 📎 相关信息\n\n`
+    content += `## \u{1F4CE} 相关信息\n\n`
     content += `- **视频地址**: ${window.location.href}\n`
     content += `- **导出时间**: ${new Date().toLocaleString("zh-CN")}\n`
 
@@ -561,7 +562,7 @@ async function exportSmart() {
     if (!confirmed) return
 
     showToast("正在请求 AI 分析对话...", "warning")
-    console.log("[Memflow] 开始智能调用外部大模型...")
+    console.log("[Memflow] 开始调用外部大模型...")
 
     // 2. 提取当前对话
     const conversation = currentAdapter.extractConversation()
@@ -619,9 +620,13 @@ async function exportSmart() {
 }
 
 function downloadMarkdown(content: string, filename: string) {
-  const safeFilename = filename.replace(/[<>:"/\|?*]/g, "-").slice(0, 50)
-  // 添加 UTF-8 BOM (\uFEFF) 防止 Windows 下某些编辑器及 Obsidian 出现 Emoji 乱码
-  const blob = new Blob(["\uFEFF", content], { type: "text/markdown;charset=utf-8" })
+  const safeFilename = Array.from(filename.replace(/[<>:"/\\|?*]/g, "-")).slice(0, 50).join("")
+
+  // 使用 TextEncoder 构建安全可控的 UTF-8 字节流并手动压入 BOM 头，防止 Windows 解析错 Emoji
+  const encoder = new TextEncoder()
+  const contentBytes = encoder.encode(content)
+  const bomBytes = new Uint8Array([0xEF, 0xBB, 0xBF])
+  const blob = new Blob([bomBytes, contentBytes], { type: "text/markdown;charset=utf-8" })
   const url = URL.createObjectURL(blob)
 
   const a = document.createElement("a")
@@ -630,7 +635,6 @@ function downloadMarkdown(content: string, filename: string) {
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
-
   URL.revokeObjectURL(url)
 }
 

@@ -490,9 +490,35 @@ export class BiliBiliAdapter extends BaseAdapter {
       ; (window as any).__memflowSubtitleHookInstalled = true
       ; (window as any).__memflowSubtitleCache = null
 
+    const store = window as any
+
+    // 监听 URL 变化，清除缓存，避免 SPA 页面切换导致读取到上一个视频的字幕
+    let lastUrl = location.href
+    const checkUrlChange = () => {
+      if (location.href !== lastUrl) {
+        console.log("[Memflow Bilibili Hook] URL 发生变化，清空字幕缓存")
+        lastUrl = location.href
+        store.__memflowSubtitleCache = null
+      }
+    }
+
+    // 拦截 history.pushState 和 history.replaceState
+    const origPushState = history.pushState
+    history.pushState = function (...args) {
+      const ret = origPushState.apply(this, args)
+      checkUrlChange()
+      return ret
+    }
+    const origReplaceState = history.replaceState
+    history.replaceState = function (...args) {
+      const ret = origReplaceState.apply(this, args)
+      checkUrlChange()
+      return ret
+    }
+    window.addEventListener("popstate", checkUrlChange)
+
     // 拦截 XHR
     const OrigXHR = window.XMLHttpRequest
-    const store = window as any
       ; (window as any).XMLHttpRequest = function () {
         const xhr = new OrigXHR()
         let capturedUrl = ""
@@ -505,7 +531,7 @@ export class BiliBiliAdapter extends BaseAdapter {
 
         const origSend = xhr.send.bind(xhr)
           ; (xhr as any).send = function (body?: Document | XMLHttpRequestBodyInit | null) {
-            if (capturedUrl && capturedUrl.includes("/bfs/subtitle/")) {
+            if (capturedUrl && (capturedUrl.includes("/bfs/subtitle/") || capturedUrl.includes("/bfs/ai_subtitle/"))) {
               xhr.addEventListener("load", () => {
                 try {
                   const json = JSON.parse(xhr.responseText)
@@ -522,12 +548,11 @@ export class BiliBiliAdapter extends BaseAdapter {
         return xhr
       } as any
 
-    // 拦截 fetch
     const origFetch = window.fetch.bind(window)
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : (input as Request).url
       const res = await origFetch(input, init)
-      if (url && url.includes("/bfs/subtitle/")) {
+      if (url && (url.includes("/bfs/subtitle/") || url.includes("/bfs/ai_subtitle/"))) {
         try {
           const clone = res.clone()
           const json = await clone.json()

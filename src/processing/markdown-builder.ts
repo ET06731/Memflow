@@ -101,7 +101,7 @@ source: [[${platform}]]
 original_url: "${url}"
 tags: [${tags.join(", ")}]
 category: ${category}
-status: 🟢 待整理
+status: \u{1F7E2} 待整理
 ---`
   }
 
@@ -152,7 +152,7 @@ status: 🟢 待整理
       } else {
         // Web 模式
         const roleName = msg.role === "user" ? "User" : conversation.platform
-        const icon = msg.role === "user" ? "💬" : "🤖"
+        const icon = msg.role === "user" ? "\u{1F4AC}" : "\u{1F916}"
         md += `## ${icon} ${roleName}\n\n`
         md += `${content}\n\n`
         md += `---\n\n`
@@ -160,7 +160,7 @@ status: 🟢 待整理
     })
 
     if (format === "web") {
-      md += `## 📎 元信息\n\n`
+      md += `## \u{1F4CE} 元信息\n\n`
       md += `- **来源平台**: ${conversation.platform}\n`
       md += `- **原始链接**: [点击跳转](${conversation.url})\n`
       md += `- **导出时间**: ${new Date().toLocaleString("zh-CN")}\n`

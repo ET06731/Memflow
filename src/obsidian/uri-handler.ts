@@ -78,24 +78,38 @@ export class ObsidianURIHandler {
 
       if (!clipboardSuccess) {
         // 剪贴板失败，尝试直接传参（仅短内容）
-        if (markdown.length < 2000) {
-          obsidianUrl += `&content=${encodeURIComponent(markdown)}`
-          console.log("🔗 剪贴板失败，直接传参:", obsidianUrl.substring(0, 100))
+        if (markdown.length < 1500) {
+          try {
+            // 在 encodeURIComponent 前通过 toWellFormed 彻底清洗可能从页面抓取来的已损坏或成单的高/低位 Surrogate Unicode 字符（例如残破 emoji），防止触发 URI malformed 崩溃。
+            const safeMarkdown = typeof (markdown as any).toWellFormed === "function"
+              ? (markdown as any).toWellFormed()
+              : markdown.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, "").replace(/(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "$1")
 
-          // 只有 autoOpen 不为 false 时才打开 Obsidian
-          if (this.config.autoOpen !== false) {
-            this.openObsidianUrl(obsidianUrl)
-          } else {
-            console.log("🔇 静默模式：跳过打开 Obsidian")
-          }
+            obsidianUrl += `&content=${encodeURIComponent(safeMarkdown)}`
+            console.log("🔗 剪贴板失败，直接传参:", obsidianUrl.substring(0, 100))
 
-          return {
-            success: true,
-            method: "direct",
-            message:
-              this.config.autoOpen !== false
-                ? "✅ 已发送到 Obsidian！"
-                : "✅ 文件已准备（静默模式）"
+            // 只有 autoOpen 不为 false 时才打开 Obsidian
+            if (this.config.autoOpen !== false) {
+              this.openObsidianUrl(obsidianUrl)
+            } else {
+              console.log("🔇 静默模式：跳过打开 Obsidian")
+            }
+
+            return {
+              success: true,
+              method: "direct",
+              message:
+                this.config.autoOpen !== false
+                  ? "✅ 已发送到 Obsidian！"
+                  : "✅ 文件已准备（静默模式）"
+            }
+          } catch (encodeError) {
+            console.error("❌ 内容编码为 URI 失败:", encodeError)
+            return {
+              success: false,
+              method: "download",
+              message: "❌ 内容中包含无法编码为链接的特殊字符，降级下载"
+            }
           }
         }
 

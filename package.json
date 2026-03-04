@@ -1,7 +1,7 @@
 {
   "name": "memflow",
   "displayName": "Memflow - 流动的记忆",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Export AI conversations to Obsidian - A flowing memory bridge across platforms",
   "author": "Memflow Team",
   "scripts": {
