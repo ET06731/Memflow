@@ -556,12 +556,12 @@ async function exportSmart() {
 
     // 1. 确认提示
     const confirmed = window.confirm(
-      "🤖 智能导出模式\n\n插件将向当前对话发送一条分析请求，利用 AI 生成标题、摘要和分类。\n\n分析完成后会自动删除该请求（如果可能）。\n\n是否继续？"
+      "🤖 智能导出模式\n\n插件将通过你配置的第三方大语言模型接口来生成当前网页上记录的标题、摘要和分类。\n\n是否继续？"
     )
     if (!confirmed) return
 
     showToast("正在请求 AI 分析对话...", "warning")
-    console.log("[Memflow] 开始智能导出...")
+    console.log("[Memflow] 开始智能调用外部大模型...")
 
     // 2. 提取当前对话
     const conversation = currentAdapter.extractConversation()
@@ -572,11 +572,9 @@ async function exportSmart() {
 
     // 3. 生成智能元数据
     const metadataGen = createMetadataGenerator()
-    // 使用 generateWithAI，传入适配器和自动删除选项
     const metadata = await metadataGen.generateWithAI(
       conversation,
-      currentAdapter,
-      true // autoDelete = true
+      currentAdapter
     )
 
     console.log("[Memflow] 智能元数据生成完成:", metadata)
@@ -584,19 +582,11 @@ async function exportSmart() {
 
     // 4. 后续导出流程与普通模式一致
     // 重新提取对话（因为可能包含 AI 分析的临时消息，虽然 generateWithAI 内部可能已经清理，但为了保险最好重新提取一次或过滤）
-    // 注意：generateWithAI 内部如果删除了消息，页面 DOM 会更新。
-    // 这里我们直接使用 metadata 进行构建，但 conversation 内容还是旧的。
-    // 如果 AI 分析消息被删除了，DOM 恢复原状，理论上不需要重新提取，除非我们想确保 content 不包含分析过程。
-    // 简单起见，我们信任 metadata 已经生成好，直接导出原始 conversation（根据 adapter 实现，extractConversation 每次都会重新读 DOM 吗？
-    // base-adapter 的 extractConversation 是读取当前 DOM。所以如果 AI 消息已删除，再次提取是安全的。）
-
-    // 再次提取以确保干净（去除可能的残留）
-    const cleanConversation = currentAdapter.extractConversation()
-
+    // 4. 后续导出流程与普通模式一致
     // 检查扩展连接
     if (!chrome.runtime?.id || !chrome.storage) {
       const markdownBuilder = createMarkdownBuilder()
-      const markdown = markdownBuilder.build(cleanConversation, metadata, {
+      const markdown = markdownBuilder.build(conversation, metadata, {
         contentFormat: "web"
       })
       downloadMarkdown(markdown, metadata.title)
@@ -605,7 +595,7 @@ async function exportSmart() {
 
     const { obsidianConfig } = await chrome.storage.sync.get("obsidianConfig")
     const markdownBuilder = createMarkdownBuilder()
-    const markdown = markdownBuilder.build(cleanConversation, metadata, {
+    const markdown = markdownBuilder.build(conversation, metadata, {
       contentFormat: obsidianConfig?.contentFormat || "web"
     })
 
