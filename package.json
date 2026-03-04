@@ -46,10 +46,28 @@
       "https://*.openai.com/*",
       "https://chatgpt.com/*",
       "https://gemini.google.com/*",
-      "https://www.doubao.com/*"
+      "https://www.doubao.com/*",
+      "https://*.bilibili.com/*",
+      "https://bilibili.com/*"
     ],
     "permissions": [
       "storage"
-    ]
+    ],
+    "commands": {
+      "trigger-export": {
+        "suggested_key": {
+          "default": "Ctrl+Shift+E",
+          "mac": "Command+Shift+E"
+        },
+        "description": "触发导出当前页面内容"
+      },
+      "trigger-export-smart": {
+        "suggested_key": {
+          "default": "Ctrl+Shift+G",
+          "mac": "Command+Shift+G"
+        },
+        "description": "触发智能导出 (AI 总结)"
+      }
+    }
   }
 }

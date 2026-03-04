@@ -2,7 +2,116 @@ import type { PlasmoCSConfig } from "plasmo"
 
 import { ObsidianURIHandler } from "../obsidian/uri-handler"
 import { createMarkdownBuilder, createMetadataGenerator } from "../processing"
-import { detectPlatformAdapter } from "./adapters"
+import { AIService } from "../services/ai-api"
+import type { AIApiConfig, Conversation } from "../types"
+import { BiliBiliAdapter, detectPlatformAdapter } from "./adapters"
+
+/**
+ * 构建 B 站视频的 Markdown 内容
+ */
+function buildBilibiliMarkdown(
+  videoInfo: {
+    title: string
+    uploader: string
+    uploaderUrl: string
+    description: string
+    tags: string[]
+    views: string
+    likes: string
+    coins: string
+    favorites: string
+    publishDate: string
+  },
+  subtitles: string
+): string {
+  const date = new Date().toISOString().split("T")[0]
+  const tags = ["B站视频", ...videoInfo.tags].filter((t) => t).join(", ")
+
+  // 构建 YAML frontmatter
+  const yaml = `---
+created: ${date}
+source: [[B站视频]]
+original_url: "${window.location.href}"
+tags: [${tags}]
+category: 娱乐
+status: 🟢 待整理
+---`
+
+  let content = ""
+
+  // 标题
+  content += `# ${videoInfo.title}\n\n`
+
+  // 视频信息
+  content += `## 📺 视频信息\n\n`
+  content += `- **UP主**: [${videoInfo.uploader}](${videoInfo.uploaderUrl})\n`
+  content += `- **发布时间**: ${videoInfo.publishDate}\n`
+  content += `- **播放量**: ${videoInfo.views}\n`
+  content += `- **点赞**: ${videoInfo.likes}\n`
+  content += `- **投币**: ${videoInfo.coins}\n`
+  content += `- **收藏**: ${videoInfo.favorites}\n`
+  content += `- **标签**: ${videoInfo.tags.join(", ")}\n\n`
+
+  // 简介
+  content += `---\n\n`
+  content += `## 📝 视频简介\n\n`
+  content += `${videoInfo.description || "无简介"}\n\n`
+
+  // 字幕
+  if (subtitles) {
+    content += `---\n\n`
+    content += `## 📄 字幕内容\n\n`
+    // 限制字幕长度，避免太长
+    const truncatedSubtitles =
+      subtitles.length > 50000
+        ? subtitles.slice(0, 50000) + "\n\n...（字幕过长，已截断）"
+        : subtitles
+    content += truncatedSubtitles + "\n"
+  }
+
+  // 底部信息
+  content += `---\n\n`
+  content += `## 📎 相关信息\n\n`
+  content += `- **视频地址**: ${window.location.href}\n`
+  content += `- **导出时间**: ${new Date().toLocaleString("zh-CN")}\n`
+
+  return yaml + "\n\n" + content
+}
+
+/**
+ * 构建 B 站列表页（稍后看等）的 Markdown 内容
+ */
+function buildBilibiliListMarkdown(conversation: Conversation): string {
+  const date = new Date().toISOString().split("T")[0]
+
+  const yaml = `---
+created: ${date}
+source: [[B站视频]]
+original_url: "${window.location.href}"
+tags: [B站视频, 稍后看, 视频列表]
+category: 娱乐
+status: 🟢 待整理
+---`
+
+  let content = ""
+
+  // 标题
+  content += `# ${conversation.title}\n\n`
+  content += `> 🤖 由 Memflow 导出\n\n`
+
+  // 视频列表内容（从 messages 中提取）
+  if (conversation.messages.length > 0) {
+    content += conversation.messages[0].content + "\n"
+  }
+
+  // 底部信息
+  content += `---\n\n`
+  content += `## 📎 相关信息\n\n`
+  content += `- **列表地址**: ${window.location.href}\n`
+  content += `- **导出时间**: ${new Date().toLocaleString("zh-CN")}\n`
+
+  return yaml + "\n\n" + content
+}
 
 export const config: PlasmoCSConfig = {
   matches: [
@@ -14,11 +123,46 @@ export const config: PlasmoCSConfig = {
     "https://kimi.ai/*",
     "https://www.kimi.com/*",
     "https://gemini.google.com/*",
-    "https://www.doubao.com/*"
+    "https://www.doubao.com/*",
+    // B站视频页面
+    "https://www.bilibili.com/video/*",
+    "https://bilibili.com/video/*",
+    // B站稍后看列表
+    "https://www.bilibili.com/list/watchlater*",
+    "https://bilibili.com/list/watchlater*",
+    // B站其他列表页
+    "https://www.bilibili.com/list/*",
+    "https://bilibili.com/list/*"
   ]
 }
 
+// 初始检测平台（页面加载时）
 let currentAdapter = detectPlatformAdapter()
+console.log("[Memflow] 初始适配器:", currentAdapter?.platformName || "未检测到")
+
+// 如果是 B 站页面（视频或列表），立即安装字幕拦截器
+if (currentAdapter instanceof BiliBiliAdapter && (currentAdapter.isVideoPage() || currentAdapter.isListPage())) {
+  currentAdapter.installSubtitleHook()
+}
+
+/**
+ * 重新检测当前平台（用于消息触发时）
+ */
+function reDetectPlatform() {
+  const newAdapter = detectPlatformAdapter()
+  if (newAdapter) {
+    currentAdapter = newAdapter
+    console.log("[Memflow] 重新检测到平台:", currentAdapter.platformName)
+  }
+  return currentAdapter
+}
+
+/**
+ * 判断是否为 B 站视频页面
+ */
+function isBiliBiliVideo(): boolean {
+  return currentAdapter?.platformName === "Bilibili"
+}
 
 async function exportDirect() {
   try {
@@ -29,14 +173,142 @@ async function exportDirect() {
 
     console.log("[Memflow] 开始提取对话...")
 
-    const conversation = currentAdapter.extractConversation()
+    // B 站列表页处理
+    if (currentAdapter instanceof BiliBiliAdapter) {
+      const bilibiliAdapter = currentAdapter as BiliBiliAdapter
 
-    if (conversation.messages.length === 0) {
+      if (bilibiliAdapter.isListPage()) {
+        // 列表页 - 直接导出视频列表
+        console.log("[Memflow Bilibili] 检测到列表页")
+        showToast("正在提取视频列表...", "warning")
+
+        const conversation = bilibiliAdapter.extractConversation()
+
+        // 构建列表页 Markdown
+        const listMarkdown = buildBilibiliListMarkdown(conversation)
+
+        // 导出
+        const { obsidianConfig } =
+          await chrome.storage.sync.get("obsidianConfig")
+
+        if (!chrome.runtime?.id || !chrome.storage) {
+          downloadMarkdown(listMarkdown, conversation.title)
+          showToast("已导出为文件", "success")
+          return
+        }
+
+        if (!obsidianConfig?.vaultName) {
+          downloadMarkdown(listMarkdown, conversation.title)
+          showToast("请在扩展设置中配置 Obsidian", "warning")
+          return
+        }
+
+        if (obsidianConfig.exportMethod === "uri") {
+          const handler = new ObsidianURIHandler(obsidianConfig)
+          const result = await handler.exportToObsidian(listMarkdown, {
+            title: conversation.title,
+            summary: `包含 ${(conversation.messages[0]?.content || "").split("### ").length - 1 || 0} 个视频`,
+            keywords: ["B站", "稍后看", "视频列表"],
+            category: "娱乐",
+            platform: "Bilibili",
+            url: window.location.href
+          })
+          showToast(result.message, result.success ? "success" : "warning")
+        } else {
+          downloadMarkdown(listMarkdown, conversation.title)
+          showToast("导出成功", "success")
+        }
+        return
+      }
+
+      // 视频详情页 - 继续获取字幕
+      if (bilibiliAdapter.isVideoPage()) {
+        let conversation = bilibiliAdapter.extractConversation()
+        let subtitles = ""
+
+        // 读取关于字幕的配置
+        const { obsidianConfig: videoConfig } = await chrome.storage.sync.get("obsidianConfig")
+
+        if (videoConfig?.saveSubtitles !== false) {
+          showToast("正在获取字幕...", "warning")
+          console.log("[Memflow Bilibili] 正在获取字幕...")
+
+          subtitles = await bilibiliAdapter.getSubtitles(!!videoConfig?.saveSubtitlesWithTimestamp)
+        } else {
+          console.log("[Memflow Bilibili] 设置中禁用了保存字幕")
+        }
+
+        if (subtitles && subtitles.length > 0) {
+          conversation.messages.push({
+            role: "assistant",
+            content: "\n---\n\n## 视频字幕\n\n" + subtitles,
+            timestamp: new Date()
+          })
+          console.log(
+            "[Memflow Bilibili] 字幕获取成功:",
+            subtitles.slice(0, 100) + "..."
+          )
+        } else {
+          console.log("[Memflow Bilibili] 未找到字幕")
+          showToast("未找到字幕，将导出视频基本信息", "warning")
+        }
+
+        if (conversation.messages.length === 0) {
+          showToast("没有找到对话内容", "warning")
+          return
+        }
+
+        console.log(`[Memflow] 提取到 ${conversation.messages.length} 条消息`)
+
+        // B 站视频详情页使用专门的模板
+        const videoInfo = bilibiliAdapter.getVideoInfo()
+        const bilibiliMarkdown = buildBilibiliMarkdown(videoInfo, subtitles)
+
+        const { obsidianConfig } =
+          await chrome.storage.sync.get("obsidianConfig")
+
+        if (!chrome.runtime?.id || !chrome.storage) {
+          downloadMarkdown(bilibiliMarkdown, videoInfo.title)
+          showToast("已导出为文件", "success")
+          return
+        }
+
+        if (!obsidianConfig?.vaultName) {
+          downloadMarkdown(bilibiliMarkdown, videoInfo.title)
+          showToast("请在扩展设置中配置 Obsidian", "warning")
+          return
+        }
+
+        if (obsidianConfig.exportMethod === "uri") {
+          const handler = new ObsidianURIHandler(obsidianConfig)
+          const result = await handler.exportToObsidian(bilibiliMarkdown, {
+            title: videoInfo.title,
+            summary: "",
+            keywords: videoInfo.tags,
+            category: "娱乐",
+            platform: "Bilibili",
+            url: window.location.href
+          })
+          if (result.success) {
+            showToast(result.message, "success")
+          } else {
+            downloadMarkdown(bilibiliMarkdown, videoInfo.title)
+            showToast("URI调用失败，已下载文件", "warning")
+          }
+        } else {
+          downloadMarkdown(bilibiliMarkdown, videoInfo.title)
+          showToast("导出成功", "success")
+        }
+        return
+      }
+    }
+
+    // 非 B 站平台的原有逻辑
+    const conversation = currentAdapter.extractConversation()
+    if (!conversation || conversation.messages.length === 0) {
       showToast("没有找到对话内容", "warning")
       return
     }
-
-    console.log(`[Memflow] 提取到 ${conversation.messages.length} 条消息`)
 
     const metadataGen = createMetadataGenerator()
     const metadata = metadataGen.generateLocal(conversation)
@@ -90,10 +362,195 @@ async function exportDirect() {
   }
 }
 
+/**
+ * B 站视频智能导出 - 使用 AI 总结字幕内容
+ */
+async function exportBiliBiliSmart() {
+  try {
+    if (!currentAdapter || !(currentAdapter instanceof BiliBiliAdapter)) {
+      showToast("当前页面不是 B 站视频", "error")
+      return
+    }
+
+    // 1. 获取 AI API 配置
+    const { aiApiConfig } = await chrome.storage.sync.get("aiApiConfig")
+
+    // 2. 确认提示
+    const confirmed = window.confirm(
+      "🤖 B 站视频智能导出\n\n插件将提取视频字幕并使用 AI 生成总结。\n\n💡 请确保视频已开启字幕（点击播放器右下角CC按钮）\n\n是否继续？"
+    )
+    if (!confirmed) return
+
+    showToast("正在获取字幕...", "warning")
+    console.log("[Memflow Bilibili] 开始智能导出...")
+
+    // 3. 获取视频信息和字幕
+    const bilibiliAdapter = currentAdapter as BiliBiliAdapter
+    const videoInfo = bilibiliAdapter.getVideoInfo()
+
+    const { obsidianConfig: topConfig } = await chrome.storage.sync.get("obsidianConfig")
+    let subtitles = ""
+
+    // 默认给 AI 发送的字幕不带时间戳也可以，但如果用户开启了时间戳并保存字幕，
+    // 我们为了统一就把带时间戳的字幕发给 AI 并且保存。
+    // 当然也可以获取两次分离，这里按最简单方式复用。
+    const withTimestamp = topConfig?.saveSubtitles !== false && !!topConfig?.saveSubtitlesWithTimestamp
+
+    subtitles = await bilibiliAdapter.getSubtitles(withTimestamp)
+
+    if (!subtitles || subtitles.length === 0) {
+      showToast(
+        "❌ 未检测到字幕！请在视频播放器下方点击「字幕/CC」按钮开启字幕后重试",
+        "error"
+      )
+      console.log("[Memflow Bilibili] 未找到字幕，视频可能没有开启字幕")
+      return
+    }
+
+    console.log("[Memflow Bilibili] 字幕获取成功，长度:", subtitles.length)
+
+    // 4. 检查 API 配置
+    if (!aiApiConfig?.enabled || !aiApiConfig?.apiKey) {
+      showToast("请在设置中配置 AI API", "error")
+      return
+    }
+
+    showToast("正在请求 AI 分析...", "warning")
+
+    // 5. 使用真实 API 生成总结
+    const aiConfig: AIApiConfig = {
+      enabled: aiApiConfig.enabled,
+      provider: aiApiConfig.provider || "deepseek",
+      apiKey: aiApiConfig.apiKey,
+      baseUrl: aiApiConfig.baseUrl || "",
+      model: aiApiConfig.model || ""
+    }
+
+    const aiResult = await AIService.summarize({
+      subtitles,
+      videoInfo: {
+        title: videoInfo.title,
+        uploader: videoInfo.uploader,
+        description: videoInfo.description,
+        tags: videoInfo.tags
+      },
+      config: aiConfig
+    })
+
+    console.log("[Memflow Bilibili] AI 总结完成:", aiResult)
+
+    // 6. 构建 Markdown 内容 - 使用统一的 B 站模板
+    const finalTitle = aiResult.title || videoInfo.title
+    const date = new Date().toISOString().split("T")[0]
+    const tags = ["B站视频", ...aiResult.keywords].filter((t) => t).join(", ")
+
+    // 构建 YAML frontmatter
+    const yaml = `---
+created: ${date}
+source: [[B站视频]]
+original_url: "${window.location.href}"
+tags: [${tags}]
+category: ${aiResult.category as any}
+status: 🟢 待整理
+---`
+
+    let content = ""
+
+    // 标题
+    content += `# ${videoInfo.title}\n\n`
+    content += `> 🤖 由 Memflow AI 总结\n\n`
+
+    // 视频信息
+    content += `## 📺 视频信息\n\n`
+    content += `- **UP主**: [${videoInfo.uploader}](${videoInfo.uploaderUrl})\n`
+    content += `- **发布时间**: ${videoInfo.publishDate}\n`
+    content += `- **播放量**: ${videoInfo.views}\n`
+    content += `- **点赞**: ${videoInfo.likes}\n`
+    content += `- **投币**: ${videoInfo.coins}\n`
+    content += `- **收藏**: ${videoInfo.favorites}\n`
+    content += `- **标签**: ${videoInfo.tags.join(", ")}\n\n`
+
+    // 简介
+    content += `---\n\n`
+    content += `## 📝 视频简介\n\n`
+    content += `${videoInfo.description || "无简介"}\n\n`
+
+    // AI 总结
+    content += `---\n\n`
+    content += `## 💡 AI 总结\n\n`
+    content += `${aiResult.summary}\n\n`
+
+    // 关键词
+    content += `---\n\n`
+    content += `## 🏷️ 关键词\n\n`
+    content += aiResult.keywords.join(", ") + "\n\n"
+
+    // 如果用户开启了保存原文字幕，则追加
+    if (topConfig?.saveSubtitles !== false && subtitles) {
+      content += `---\n\n`
+      content += `## 📑 字幕原文\n\n`
+      content += `${subtitles}\n\n`
+    }
+
+    // 底部信息
+    content += `---\n\n`
+    content += `## 📎 相关信息\n\n`
+    content += `- **视频地址**: ${window.location.href}\n`
+    content += `- **导出时间**: ${new Date().toLocaleString("zh-CN")}\n`
+
+    const markdownContent = yaml + "\n\n" + content
+
+    // 7. 导出
+    if (!chrome.runtime?.id || !chrome.storage) {
+      downloadMarkdown(markdownContent, finalTitle)
+      showToast("已导出为文件", "success")
+      return
+    }
+
+    const { obsidianConfig } = await chrome.storage.sync.get("obsidianConfig")
+
+    if (!obsidianConfig || !obsidianConfig.vaultName) {
+      downloadMarkdown(markdownContent, finalTitle)
+      showToast("请在扩展设置中配置 Obsidian", "warning")
+      return
+    }
+
+    if (obsidianConfig.exportMethod === "uri") {
+      const handler = new ObsidianURIHandler(obsidianConfig)
+      const result = await handler.exportToObsidian(markdownContent, {
+        title: finalTitle,
+        summary: aiResult.summary,
+        keywords: aiResult.keywords,
+        category: aiResult.category as any,
+        platform: "Bilibili",
+        url: window.location.href
+      })
+      if (result.success) {
+        showToast(result.message, "success")
+      } else {
+        downloadMarkdown(markdownContent, finalTitle)
+        showToast("URI调用失败，已下载文件", "warning")
+      }
+    } else {
+      downloadMarkdown(markdownContent, finalTitle)
+      showToast("导出成功", "success")
+    }
+  } catch (error) {
+    console.error("[Memflow Bilibili] 智能导出失败:", error)
+    showToast(`智能导出失败: ${error.message}`, "error")
+  }
+}
+
 async function exportSmart() {
   try {
     if (!currentAdapter) {
       showToast("当前页面不支持导出", "error")
+      return
+    }
+
+    // B 站视频的智能导出特殊处理
+    if (isBiliBiliVideo()) {
+      await exportBiliBiliSmart()
       return
     }
 
@@ -173,7 +630,8 @@ async function exportSmart() {
 
 function downloadMarkdown(content: string, filename: string) {
   const safeFilename = filename.replace(/[<>:"/\|?*]/g, "-").slice(0, 50)
-  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" })
+  // 添加 UTF-8 BOM (\uFEFF) 防止 Windows 下某些编辑器及 Obsidian 出现 Emoji 乱码
+  const blob = new Blob(["\uFEFF", content], { type: "text/markdown;charset=utf-8" })
   const url = URL.createObjectURL(blob)
 
   const a = document.createElement("a")
@@ -552,7 +1010,7 @@ function findToolbarLocation(): HTMLElement | null {
                       ? "(Gemini)"
                       : "(最后一个)"
               )
-              ;(targetBtn as any).__memflowShareButton = targetBtn
+                ; (targetBtn as any).__memflowShareButton = targetBtn
               return targetBtn as HTMLElement
             }
           }
@@ -709,6 +1167,12 @@ function showToast(
 function initMemflow() {
   console.log("[Memflow] 初始化开始...")
 
+  // B 站视频页面不创建工具栏按钮，只通过 popup 触发导出
+  if (isBiliBiliVideo()) {
+    console.log("[Memflow] B站视频页面，跳过工具栏按钮创建")
+    return
+  }
+
   // 尝试创建按钮，如果失败则重试
   let retryCount = 0
   const maxRetries = 10
@@ -797,7 +1261,22 @@ if (document.readyState === "complete") {
 chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
   if (message.action === "triggerExport") {
     console.log("[Memflow] 收到 popup 导出请求")
-    // 检查是否已有导出按钮
+
+    // 重新检测平台（页面可能已经变化）
+    if (!currentAdapter) {
+      console.log("[Memflow] 重新检测适配器...")
+      reDetectPlatform()
+    }
+
+    // 如果是 B 站页面，直接调用导出函数
+    if (currentAdapter instanceof BiliBiliAdapter) {
+      console.log("[Memflow] B 站页面，直接调用导出")
+      exportDirect()
+      sendResponse({ success: true })
+      return true
+    }
+
+    // 非 B 站页面：尝试点击或创建按钮
     const existingBtn = document.getElementById("memflow-export-btn")
     if (existingBtn) {
       existingBtn.click()
@@ -815,6 +1294,17 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
         }
       }, 1500)
     }
+    return true
+  }
+
+  if (message.action === "triggerExportSmart") {
+    console.log("[Memflow] 收到智能导出请求（快捷键）")
+    // 重新检测适配器
+    if (!currentAdapter) {
+      reDetectPlatform()
+    }
+    exportSmart()
+    sendResponse({ success: true })
     return true
   }
 })

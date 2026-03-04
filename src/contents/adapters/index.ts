@@ -1,4 +1,5 @@
 import type { IAdapter } from "./base-adapter"
+import { createBiliBiliAdapter } from "./bilibili"
 import { createChatGPTAdapter } from "./chatgpt"
 import { createDeepSeekAdapter } from "./deepseek"
 import { createDoubaoAdapter } from "./doubao"
@@ -6,6 +7,7 @@ import { createGeminiAdapter } from "./gemini"
 import { createKimiAdapter } from "./kimi"
 
 export { BaseAdapter } from "./base-adapter"
+export { BiliBiliAdapter } from "./bilibili"
 export { ChatGPTAdapter } from "./chatgpt"
 export { DeepSeekAdapter } from "./deepseek"
 export { DoubaoAdapter } from "./doubao"
@@ -18,6 +20,7 @@ export { KimiAdapter } from "./kimi"
 export function detectPlatformAdapter(): IAdapter | null {
   // 按优先级尝试检测
   const adapters = [
+    createBiliBiliAdapter(),
     createDeepSeekAdapter(),
     createChatGPTAdapter(),
     createKimiAdapter(),

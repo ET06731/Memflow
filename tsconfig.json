@@ -1,7 +1,9 @@
 {
   "extends": "plasmo/templates/tsconfig.base",
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "promo-video",
+    "vitest.config.ts"
   ],
   "include": [
     ".plasmo/index.d.ts",
@@ -14,6 +16,10 @@
         "./*"
       ]
     },
-    "baseUrl": "."
+    "baseUrl": ".",
+    "types": [
+      "vitest/globals",
+      "@types/chrome"
+    ]
   }
 }

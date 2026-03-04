@@ -26,7 +26,7 @@ export interface Metadata {
   title: string
   keywords: string[]
   summary: string
-  category: "编程" | "生活" | "思考" | "项目"
+  category: "编程" | "生活" | "思考" | "项目" | "娱乐" | "教育"
   topics?: string[]
   platform: string
   url: string
@@ -52,4 +52,17 @@ export interface ObsidianConfig {
   integrationMethod: "advanced-uri" | "rest-api" | "download"
   restApiUrl?: string
   restApiToken?: string
+  saveSubtitles?: boolean
+  saveSubtitlesWithTimestamp?: boolean
+}
+
+/**
+ * AI API 配置
+ */
+export interface AIApiConfig {
+  enabled: boolean
+  provider: "openai" | "deepseek" | "kimi" | "gemini" | "custom"
+  apiKey: string
+  baseUrl?: string
+  model: string
 }

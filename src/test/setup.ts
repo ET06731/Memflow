@@ -1,7 +1,8 @@
+/// <reference types="vitest/globals" />
 import "@testing-library/jest-dom"
 
 // Mock Chrome Extension API
-global.chrome = {
+globalThis.chrome = {
   storage: {
     sync: {
       get: vi.fn(),
@@ -111,7 +112,7 @@ Object.defineProperty(window, "location", {
 })
 
 // Mock crypto.randomUUID
-Object.defineProperty(global, "crypto", {
+Object.defineProperty(globalThis, "crypto", {
   value: {
     randomUUID: () => "test-uuid-1234"
   }
