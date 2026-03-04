@@ -7,7 +7,7 @@
 - ✅ **多平台聊天导出**：支持 DeepSeek、ChatGPT、Kimi、Gemini、豆包等 AI 对话平台
 - ✅ **B站视频智能提炼**：支持导出获取 B 站视频原文字幕，并利用你配置的 AI API 一键生成结构化的视频摘要！
 - ✅ **流式的重组构造**：自动生成带层级的 Markdown，包含标题、关键词、高光总结等
-- ✅ **一键无缝接入**：自动通过 Obsidian Advanced URI 或直接下载的方式保存至笔记系统
+- ✅ **一键无缝接入**：自动通过 Obsidian Advanced URI 的方式保存至笔记系统或直接下载Markdown文件
 - ✅ **极致沉浸**：页面右上角原生集成导出按钮
 
 ## 🚀 快速开始
@@ -25,7 +25,7 @@ pnpm dev
 pnpm build
 ```
 
-### 安装说明 (针对普通用户)
+### 安装说明 (使用)
 
 1. 前往本仓库的 **[Releases](https://github.com/your-repo/releases)** 页面
 2. 下载最新版本（如 `v1.0.1`）的 `memflow-xxx.zip` 压缩包并解压到一个文件夹
@@ -33,7 +33,7 @@ pnpm build
 4. 打开右上角的 **"开发者模式"**
 5. 点击左上角 **"加载已解压的扩展程序"**，选择你刚刚解压的文件夹即可！
 
-### 在开发者模式中加载 (针对开发者)
+### 在开发者模式中加载 (开发)
 
 1. 安装依赖并执行 `pnpm build`（生产环境）或 `pnpm dev`（调试环境）
 2. 按照上述步骤在 `chrome://extensions` 中加载 `build/chrome-mv3-prod` 或 `build/chrome-mv3-dev` 目录
