@@ -2,6 +2,8 @@
 
 从 AI 对话平台导出对话到 Obsidian 知识库的浏览器扩展。
 
+[English](./README_EN.md) | [简体中文](./README.md)
+
 ## ✨ 功能特性
 
 - ✅ **多平台聊天导出**：支持 DeepSeek、ChatGPT、Kimi、Gemini、豆包等 AI 对话平台
