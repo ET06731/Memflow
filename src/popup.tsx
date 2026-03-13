@@ -17,6 +17,7 @@ interface AIApiConfig {
   apiKey: string
   baseUrl: string
   model: string
+  bilibiliPromptTemplate?: "tech" | "study"
 }
 
 // 多语言配置
@@ -171,7 +172,8 @@ function Popup() {
     provider: "deepseek",
     apiKey: "",
     baseUrl: "",
-    model: ""
+    model: "",
+    bilibiliPromptTemplate: "tech"
   })
 
   const [saved, setSaved] = useState(false)
@@ -1256,6 +1258,40 @@ function Popup() {
                       />
                     </div>
                     <span className="input-hint">{t.aiApiModelHint}</span>
+                  </div>
+                  
+                  <div className="form-group" style={{ marginTop: "16px" }}>
+                    <label className="form-label">{lang === "zh" ? "B站提示词模板" : "Bilibili Prompt Template"}</label>
+                    <div className="method-selector">
+                      <div className="method-option">
+                        <input
+                          type="radio"
+                          id="template-tech"
+                          className="method-radio"
+                          checked={aiConfig.bilibiliPromptTemplate === "tech" || !aiConfig.bilibiliPromptTemplate}
+                          onChange={() => setAiConfig({ ...aiConfig, bilibiliPromptTemplate: "tech" })}
+                        />
+                        <label htmlFor="template-tech" className="method-label" style={{ padding: "8px" }}>
+                          <span className="method-icon">💻</span>
+                          <span className="method-title">{lang === "zh" ? "科技专栏" : "Tech Column"}</span>
+                          <span className="method-desc" style={{ fontSize: "10px" }}>{lang === "zh" ? "深度科技复盘文章" : "Deep tech review article"}</span>
+                        </label>
+                      </div>
+                      <div className="method-option">
+                        <input
+                          type="radio"
+                          id="template-study"
+                          className="method-radio"
+                          checked={aiConfig.bilibiliPromptTemplate === "study"}
+                          onChange={() => setAiConfig({ ...aiConfig, bilibiliPromptTemplate: "study" })}
+                        />
+                        <label htmlFor="template-study" className="method-label" style={{ padding: "8px" }}>
+                          <span className="method-icon">📚</span>
+                          <span className="method-title">{lang === "zh" ? "知识梳理" : "Study Notes"}</span>
+                          <span className="method-desc" style={{ fontSize: "10px" }}>{lang === "zh" ? "结构化学习笔记" : "Structured study notes"}</span>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </>
               )}
