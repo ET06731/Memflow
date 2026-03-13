@@ -1,6 +1,6 @@
 {
-  "version": "1.0.1",
-  "lastUpdate": "2026-02-08",
+  "version": "1.0.2",
+  "lastUpdate": "2026-03-13",
   "platforms": {
     "deepseek": {
       "messageContainer": "div[class*='message'], [role='article'], .chat-item, div[data-message-id]",
@@ -28,10 +28,10 @@
       "sendButton": "div[class*='send-button'], button[class*='send-button']"
     },
     "gemini": {
-      "messageContainer": "div[class*='conversation-turn'], [data-turn], div[class*='response-container']",
-      "userMessage": "[data-message-author-role='user'], div[class*='user-content'], [data-turn='user']",
-      "aiMessage": "[data-message-author-role='assistant'], div[class*='model-response'], [data-turn='assistant'], div[class*='response-content']",
-      "codeBlock": "pre code, code[class*='language-']",
+      "messageContainer": "message-content, .response-content, .model-response-text, .query-text-line, div[class*='user-content'], div[class*='model-response'], [data-turn]",
+      "userMessage": ".query-text-line, [data-message-author-role='user'], div[class*='user-content'], [data-turn='user']",
+      "aiMessage": "message-content, .response-content, .model-response-text, [data-message-author-role='assistant'], [data-turn='assistant']",
+      "codeBlock": "pre code, code[class*='language-'], .code-block-container",
       "inputBox": "textarea[placeholder*='询问'], textarea[placeholder*='Ask'], div[contenteditable='true'][role='textbox']",
       "sendButton": "button[aria-label*='发送'], button[aria-label*='Send'], button[class*='send-button']"
     },

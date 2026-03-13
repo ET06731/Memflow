@@ -1,4 +1,5 @@
 import type { AIApiConfig } from "../types"
+import { compressToTargetTokens, estimateTokens } from "../utils/subtitle-compressor"
 
 /**
  * AI API 提供商配置
@@ -157,8 +158,9 @@ export class AIService {
       tags: string[]
     }
   ): string {
-    // 使用深度 Unicode 清理避免 API 端 JSON 解析 400 失败报错（unexpected end of hex escape）
-    const maxSubtitles = this.sanitizeText(subtitles, 6000)
+    const originalTokens = estimateTokens(subtitles)
+    const maxSubtitles = compressToTargetTokens(subtitles, 4000)
+    console.log(`[AIService] 字幕压缩: ${originalTokens} tokens -> ${estimateTokens(maxSubtitles)} tokens`)
 
     return `请分析以下视频内容，生成结构化的深度总结信息。
 
@@ -271,7 +273,7 @@ ${maxText}
         ],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 8192,
           topP: 0.95,
           topK: 40
         }
@@ -288,7 +290,7 @@ ${maxText}
           }
         ],
         temperature: 0.7,
-        max_tokens: 4096
+        max_tokens: 8192
       }
     }
 

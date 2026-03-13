@@ -18,12 +18,23 @@ export class GeminiAdapter extends BaseAdapter {
 
   /**
    * Gemini 特定的提取逻辑
-   * 由于 Gemini 使用复杂的数据属性和动态加载，可能需要特殊处理
    */
-  // extractConversation(): Conversation {
-  //   // 如果需要覆盖基类方法，在这里添加 Gemini 特有的提取逻辑
-  //   return super.extractConversation()
-  // }
+  extractConversation() {
+    console.log("🚀 [Memflow] 开始 Gemini 深度内容提取...")
+    const conversation = super.extractConversation()
+
+    conversation.messages = conversation.messages.map((msg) => {
+      let content = msg.content
+      // 深度清理：移除 Gemini 标题、图标、显示思路按钮等
+      content = content.replace(/<h[1-6]\b[^>]*>(Gemini|Google)<\/h[1-6]>/gi, "")
+      content = content.replace(/显示思路|Show thoughts/gi, "")
+      content = content.replace(/<div\b[^>]*class="[^"]*model-icon[^"]*"[^>]*>([\s\S]*?)<\/div>/gi, "")
+      msg.content = content.trim()
+      return msg
+    }).filter(msg => msg.content.length > 0)
+    
+    return conversation
+  }
 }
 
 /**

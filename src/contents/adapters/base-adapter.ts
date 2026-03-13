@@ -69,30 +69,25 @@ export abstract class BaseAdapter implements IAdapter {
     const selectorList = this.selectors.messageContainer
       .split(",")
       .map((s) => s.trim())
-    let messageElements: NodeListOf<Element> | null = null
+    const combined: Element[] = []
+    const seen = new Set<Element>()
+    selectorList.forEach(s => {
+      try {
+        Array.from(document.querySelectorAll(s)).forEach(el => {
+          if (!seen.has(el)) { combined.push(el); seen.add(el); }
+        })
+      } catch (e) {}
+    })
 
-    console.log("🔍 尝试查找消息容器，选择器:", selectorList)
-
-    for (const selector of selectorList) {
-      const elements = document.querySelectorAll(selector)
-      if (elements.length > 0) {
-        console.log(`✅ 找到 ${elements.length} 个消息元素 (${selector})`)
-        messageElements = elements
-        break
-      }
+    let messageElementsArr = combined.filter(el => !combined.some(other => other !== el && el.contains(other)))
+    if (messageElementsArr.length === 0) {
+      messageElementsArr = Array.from(document.querySelectorAll('div[class*="message"], [role="article"], p'))
     }
+    messageElementsArr.sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1)
 
-    if (!messageElements || messageElements.length === 0) {
-      console.warn("⚠️ 无法找到消息容器，尝试通用方法")
-      // 降级：查找所有可能的消息元素
-      messageElements = document.querySelectorAll(
-        'div[class*="message"], [role="article"], p'
-      )
-    }
+    console.log(`📝 开始处理 ${messageElementsArr.length} 个对话元素`)
 
-    console.log(`📝 开始处理 ${messageElements.length} 个元素`)
-
-    messageElements.forEach((element, index) => {
+    messageElementsArr.forEach((element, index) => {
       // 判断是用户消息还是AI消息
       const userSelectors = this.selectors.userMessage
         .split(",")
@@ -100,7 +95,7 @@ export abstract class BaseAdapter implements IAdapter {
       const aiSelectors = this.selectors.aiMessage
         .split(",")
         .map((s) => s.trim())
-
+ 
       let isUser = userSelectors.some((sel) => element.matches(sel))
       let isAI = aiSelectors.some((sel) => element.matches(sel))
 
