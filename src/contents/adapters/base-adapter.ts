@@ -79,34 +79,67 @@ export abstract class BaseAdapter implements IAdapter {
       } catch (e) {}
     })
 
-    let messageElementsArr = combined.filter(el => !combined.some(other => other !== el && el.contains(other)))
-    if (messageElementsArr.length === 0) {
-      messageElementsArr = Array.from(document.querySelectorAll('div[class*="message"], [role="article"], p'))
+    const userSelectors = this.selectors.userMessage.split(",").map(s => s.trim())
+    const aiSelectors = this.selectors.aiMessage.split(",").map(s => s.trim())
+
+    // 辅助函数：检测元素的角色（包含向上查找到祖先角色）
+    const getRole = (el: Element): "user" | "assistant" | null => {
+      if (userSelectors.some(sel => el.matches(sel))) return "user"
+      if (aiSelectors.some(sel => el.matches(sel))) return "assistant"
+      
+      const parentUser = el.closest(userSelectors.join(","))
+      if (parentUser) return "user"
+      
+      const parentAI = el.closest(aiSelectors.join(","))
+      if (parentAI) return "assistant"
+      
+      return null
     }
-    messageElementsArr.sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1)
 
-    console.log(`📝 开始处理 ${messageElementsArr.length} 个对话元素`)
-
-    messageElementsArr.forEach((element, index) => {
-      // 判断是用户消息还是AI消息
-      const userSelectors = this.selectors.userMessage
-        .split(",")
-        .map((s) => s.trim())
-      const aiSelectors = this.selectors.aiMessage
-        .split(",")
-        .map((s) => s.trim())
- 
-      let isUser = userSelectors.some((sel) => element.matches(sel))
-      let isAI = aiSelectors.some((sel) => element.matches(sel))
-
-      // 如果无法明确判断，通过文本特征或位置推断
-      if (!isUser && !isAI) {
-        // 通过index判断：偶数为用户，奇数为AI（常见模式）
-        isUser = index % 2 === 0
-        isAI = !isUser
+    // 智能化过滤逻辑
+    let elements = combined.filter(el => {
+      const elRole = getRole(el)
+      
+      // 检查该元素内部包含的其他消息单元
+      const children = combined.filter(other => other !== el && el.contains(other))
+      
+      if (children.length > 0) {
+        // 如果子元素中有任何一个角色与当前元素不同，说明当前是“回合容器”(Turn Container)
+        // 我们应该丢弃容器，保留里面的子单元以确保对话拆分准确（Gemini 逻辑）
+        const hasDifferentRoleChild = children.some(child => getRole(child) !== elRole)
+        if (hasDifferentRoleChild) return false
+        
+        // 如果所有子元素角色都相同，且就是当前元素的角色，说明子元素是碎块
+        // 我们应该保留“父容器”以获得完整消息，丢弃子碎块（豆包逻辑）
+        return true 
+      }
+      
+      // 如果没有子元素在列表中，但自身又是别人的子元素？
+      const hasParentInList = combined.some(other => other !== el && other.contains(el))
+      if (hasParentInList) {
+        const parent = combined.find(other => other !== el && other.contains(el))!
+        // 如果父元素和自己角色一样，自己就是碎块，滚粗
+        if (getRole(parent) === elRole) return false
       }
 
-      const role = isUser ? "user" : "assistant"
+      return true
+    })
+
+    if (elements.length === 0 && combined.length > 0) {
+      elements = combined // 兜底
+    } else if (elements.length === 0) {
+      elements = Array.from(document.querySelectorAll('div[class*="message"], [role="article"]'))
+    }
+
+    elements.sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1)
+
+    console.log(`📝 解析到 ${elements.length} 个对话单元`)
+    elements.forEach((element, index) => {
+      let roleResult = getRole(element)
+      if (!roleResult) {
+        roleResult = index % 2 === 0 ? "user" : "assistant"
+      }
+      const role = roleResult
 
       // 提取 HTML 内容，以便保留格式（列表、表格、代码块等）
       // 我们将在构建 Markdown 时处理它

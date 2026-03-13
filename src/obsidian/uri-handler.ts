@@ -12,7 +12,6 @@ export interface ObsidianConfig {
 /**
  * Obsidian URI 处理器
  * 使用原生 &clipboard 参数，Obsidian 自动从剪贴板读取内容
- * 无需 Advanced URI 插件，无需手动粘贴
  */
 export class ObsidianURIHandler {
   private config: ObsidianConfig

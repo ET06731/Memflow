@@ -36,10 +36,10 @@
       "sendButton": "button[aria-label*='发送'], button[aria-label*='Send'], button[class*='send-button']"
     },
     "doubao": {
-      "messageContainer": "div[class*='message-list'] > div, div[class*='chat-message'], [class*='message-item']",
-      "userMessage": "[class*='user'], [data-sender='user'], div[class*='from-user']",
-      "aiMessage": "[class*='assistant'], [class*='bot'], [data-sender='assistant'], div[class*='from-assistant']",
-      "codeBlock": "pre code, [class*='code-block'] code",
+      "messageContainer": "[data-testid='message_text_content'], .container-P2rR72, div[class*='message-list'] > div, div[class*='chat-message'], [class*='message-item']",
+      "userMessage": "[class*='user-message'], [class*='from-user'], [data-sender='user'], div[class*='user_']",
+      "aiMessage": "[class*='assistant-message'], [class*='from-assistant'], [class*='bot-message'], [data-sender='assistant'], div[class*='assistant_']",
+      "codeBlock": "pre code, [class*='code-block'] code, .markdown-body pre",
       "inputBox": "textarea[placeholder*='输入'], textarea[placeholder*='发送'], div[class*='input'] textarea, div[contenteditable='true']",
       "sendButton": "button[type='submit'], button[class*='send'], button[aria-label*='发送']"
     }
