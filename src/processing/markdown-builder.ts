@@ -25,6 +25,100 @@ export class MarkdownBuilder {
     // 添加自定义规则来保留代码块，但保持表格转换
     this.turndown.keep(["pre", "code"])
 
+    // ========== 处理 LaTeX 公式 ==========
+    this.turndown.addRule("math", {
+      filter: (node) => {
+        if (node.nodeType !== 1) return false
+        const el = node as HTMLElement
+        // 豆包
+        if (el.hasAttribute("data-custom-copy-text")) return true
+        // Gemini
+        if (el.hasAttribute("data-math")) return true
+        // DeepSeek/ChatGPT 等标准 KaTeX/MathJax 容器
+        if (
+          el.classList.contains("math-inline") || 
+          el.classList.contains("math-display") ||
+          el.classList.contains("katex-wrapper") ||
+          el.classList.contains("katex-display") || 
+          (el.classList.contains("katex-container") && el.classList.contains("math-display")) ||
+          el.classList.contains("ds-markdown-math") ||
+          el.tagName.toLowerCase() === "math"
+        ) {
+          return true
+        }
+        return false
+      },
+      replacement: (content, node) => {
+        const el = node as HTMLElement
+        let tex = ""
+
+        // 1. 优先提取平台特定的原始文本属性
+        if (el.hasAttribute("data-custom-copy-text")) {
+          // 豆包
+          tex = el.getAttribute("data-custom-copy-text") || ""
+        }
+        else if (el.hasAttribute("data-math")) {
+          // Gemini
+          tex = el.getAttribute("data-math") || ""
+        }
+        else {
+          // 2. 尝试提取标准 MathML 里的原始代码 (DeepSeek / ChatGPT)
+          const annotation = el.querySelector('annotation[encoding="application/x-tex"]')
+          if (annotation && annotation.textContent) {
+            tex = annotation.textContent
+          } 
+          // 3. Fallback: 尝试直接找含有数学源代码的标签或者纯文本
+          else {
+            // Kimi 可能会直接渲染在不可见的节点，或者我们需要提取它被处理前的纯文本
+            const rawTextNodes = Array.from(el.querySelectorAll(".katex-html"))
+            if (rawTextNodes.length > 0 && !tex) {
+               // 最坏的情况：没有源数据，只有大量切碎的 span 组拼成的可视公式
+               // 此时我们暴力抓取 .textContent (比如 'a × 10n' 或者 'Qπ(s,a) = ...')
+               // 总好过把页面节点全拆散
+               tex = (el.textContent || "").replace(/\s+/g, " ")
+            } else if (!tex) {
+               tex = content // 作为最后的兜底
+            }
+          }
+        }
+
+        tex = tex.trim()
+        if (!tex) return content
+
+        // 清理与转换数学段落标记
+        if (tex.startsWith("\\[") && tex.endsWith("\\]")) {
+          return `\n\n$$ \n${tex.substring(2, tex.length - 2).trim()}\n$$ \n\n`
+        }
+        if (tex.startsWith("\\(") && tex.endsWith("\\)")) {
+          return `$${tex.substring(2, tex.length - 2).trim()}$`
+        }
+
+        // 已经有 $/$ $ 包裹的保持不变
+        if (tex.startsWith("$$") && tex.endsWith("$$")) {
+          return `\n\n${tex}\n\n`
+        }
+        if (tex.startsWith("$") && tex.endsWith("$")) {
+          return tex
+        }
+
+        // 猜测如果属于块级公式，外包块级标识
+        if (
+          el.classList.contains("math-display") || 
+          el.classList.contains("katex-display") || 
+          el.classList.contains("ds-markdown-math") ||
+          el.classList.contains("math-block") ||
+          el.tagName.toLowerCase() === "div" ||
+          tex.includes("\\begin{") ||
+          tex.includes("\\\\") ||
+          tex.includes("\\sum")
+        ) {
+          return `\n\n$$ \n${tex}\n$$ \n\n`
+        }
+
+        return `$${tex}$`
+      }
+    })
+
     // ========== 移除无关的UI元素 ==========
     // 基础元素
     this.turndown.remove("button")

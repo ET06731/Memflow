@@ -1,4 +1,5 @@
 import type { AIApiConfig } from "../types"
+import { compressToTargetTokens, estimateTokens } from "../utils/subtitle-compressor"
 
 /**
  * AI API 提供商配置
@@ -107,9 +108,10 @@ export class AIService {
     const model = config.model || provider.defaultModel
 
     // 构建 prompt
-    const prompt = this.buildPrompt(subtitles, videoInfo)
+    const prompt = this.buildPrompt(subtitles, videoInfo, config.bilibiliPromptTemplate)
 
     console.log("[AIService] 开始调用 API:", config.provider, model)
+    console.log("[AIService] 实际发送的 Prompt:", prompt)
 
     try {
       const result = await this.callAPI({
@@ -155,13 +157,28 @@ export class AIService {
       uploader: string
       description: string
       tags: string[]
-    }
+    },
+    template?: "tech" | "study"
   ): string {
-    // 使用深度 Unicode 清理避免 API 端 JSON 解析 400 失败报错（unexpected end of hex escape）
-    const maxSubtitles = this.sanitizeText(subtitles, 6000)
+    const originalTokens = estimateTokens(subtitles)
+    const maxSubtitles = compressToTargetTokens(subtitles, 4000)
+    console.log(`[AIService] 字幕压缩: ${originalTokens} tokens -> ${estimateTokens(maxSubtitles)} tokens`)
 
-    return `请分析以下视频内容，生成结构化的深度总结信息。
+    let roleDescription = ""
+    let taskDescription = "请分析以下视频内容，生成结构化的深度总结信息。"
+    let summaryRequirements = "请提供一份丰富、详实且结构化的深度总结。字数在 300-500 字以下。要求必须使用 Markdown 语法：包含核心观点介绍、高光段落总结、金句摘录、以及清晰的项目符号列表。可以增加类似“【核心要点】”和“【详细记录】”这样的层次结构。"
 
+    if (template === "tech") {
+      roleDescription = "角色设定：你是一位资深的科技专栏作家和深度内容编辑。\n"
+      taskDescription = "任务描述：请根据我提供的视频字幕，撰写一篇逻辑严谨、排版精美的复盘文章。\n排版要求（参考截图风格）：\n标题：起一个具有行业深度、能引发思考的标题（例如：AI时代的价值悖论...）。\n引言：用简洁的语言描述视频的核心背景或一个矛盾点，带入感要强。\n分段标题：使用 Emoji + 明确的标题（如：挑战：... 思路：...）。\n核心内容：不要记流水账，要将字幕内容进行提炼。使用加粗来突出核心金句或关键结论。\n列表呈现：多用无序列表（*）来拆解细节，保证文章的“易读性”和“呼吸感”。\n总结/启示：文末给出几点深刻的总结或对未来的预判。\n"
+      summaryRequirements = "请根据上述【排版要求】提供总结。必须使用 Markdown 语法。包含引言、Emoji分段标题、核心内容提炼（使用加粗突出核心金句或关键结论）、无序列表拆解细节、以及深刻的总结/启示。"
+    } else if (template === "study") {
+      roleDescription = "角色设定：你是一位擅长知识内化的“超级学霸笔记专家”。\n"
+      taskDescription = "任务描述：请根据我提供的视频字幕，整理出一份结构清晰、重点突出的学习笔记。\n要求：\n知识框架：先给出一个整体的知识框架或思维导图大纲。\n核心概念：提取视频中提到的核心概念、专业术语，并给出简短解释。\n重点内容：以层级结构（如：一、(一)、1.）梳理核心观点、论据或步骤。\n难点解析：如有，指出内容中的难点或易混淆点，并尝试澄清。\n复习建议：给出针对当前内容的复习或实践建议。\n"
+      summaryRequirements = "请根据上述【要求】整理学习笔记。必须使用 Markdown 语法。包含整体知识框架、核心概念解释、分层级的重点梳理、难点解析以及复习建议。"
+    }
+
+    return `${roleDescription}${taskDescription}
 ## 视频信息
 - 标题: ${videoInfo.title}
 - UP主: ${videoInfo.uploader}
@@ -174,9 +191,9 @@ ${maxSubtitles}
 请严格以 JSON 格式返回以下信息，不要添加任何其他文字或多余的代码块标记：
 {
   "title": "用一句话概括视频主题，不超过15个字",
-  "summary": "请提供一份丰富、详实且结构化的深度总结。字数在 300-500 字以下。要求必须使用 Markdown 语法：包含核心观点介绍、高光段落总结、金句摘录、以及清晰的项目符号列表。可以增加类似“【核心要点】”和“【详细记录】”这样的层次结构。",
+  "summary": ${JSON.stringify(summaryRequirements)},
   "keywords": ["关键词1", "关键词2", "关键词3"],
-  "category": "从以下选项中选择一个最匹配的：技术/生活/思考/娱乐/教育"
+  "category": "从以下选项中选择一个最匹配的：编程/生活/思考/项目/娱乐/教育/技术"
 }
 
 请只返回合法的 JSON 对象。`
@@ -254,7 +271,7 @@ ${maxText}
     let url: string
     let body: any
 
-    // 作为终极防御：如果代码文件中或者前面的任何变量拼接时带有“半个乱码”等损坏的字符，
+
     // 这里使用 toWellFormed() 将其全部修复为 U+FFFD 替换符，确保 JSON.stringify() 时绝对不会生成孤立的 \\ud83d 致使服务端 400 崩溃。
     const safePrompt = typeof prompt === "string" && typeof (prompt as any).toWellFormed === "function"
       ? (prompt as any).toWellFormed()
@@ -271,7 +288,7 @@ ${maxText}
         ],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 8192,
           topP: 0.95,
           topK: 40
         }
@@ -288,7 +305,7 @@ ${maxText}
           }
         ],
         temperature: 0.7,
-        max_tokens: 4096
+        max_tokens: 8192
       }
     }
 
