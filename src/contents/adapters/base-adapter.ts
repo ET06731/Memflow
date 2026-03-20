@@ -1,4 +1,5 @@
 import type { Conversation, Message } from "../../types"
+import { stripHtml } from "../../utils/cleaner"
 
 /**
  * DOM 选择器配置
@@ -62,6 +63,74 @@ export abstract class BaseAdapter implements IAdapter {
     return window.location.href.includes(this.platformName.toLowerCase())
   }
 
+  protected normalizeMessageContent(content: string): string {
+    return stripHtml(content)
+      .replace(/\u00a0/g, " ")
+      .replace(/[\u200b-\u200d\uFEFF]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+  }
+
+  protected areContentsEquivalent(first: string, second: string): boolean {
+    const normalizedFirst = this.normalizeMessageContent(first)
+    const normalizedSecond = this.normalizeMessageContent(second)
+
+    if (!normalizedFirst || !normalizedSecond) {
+      return false
+    }
+
+    return normalizedFirst === normalizedSecond
+  }
+
+  protected appendExtractedMessage(
+    messages: Message[],
+    role: Message["role"],
+    content: string
+  ) {
+    const trimmedContent = content.trim()
+    if (!trimmedContent) {
+      return
+    }
+
+    const prevMessage = messages[messages.length - 1]
+    if (!prevMessage || prevMessage.role !== role) {
+      messages.push({
+        role,
+        content: trimmedContent,
+        timestamp: new Date()
+      })
+      return
+    }
+
+    const prevPlainText = this.normalizeMessageContent(prevMessage.content)
+    const currentPlainText = this.normalizeMessageContent(trimmedContent)
+
+    if (!currentPlainText) {
+      return
+    }
+
+    if (prevPlainText === currentPlainText) {
+      console.log(`[Memflow] 跳过重复的 ${role} 消息`)
+      return
+    }
+
+    if (currentPlainText.includes(prevPlainText)) {
+      prevMessage.content = trimmedContent
+      prevMessage.timestamp = new Date()
+      console.log(`[Memflow] 使用更完整的 ${role} 消息替换旧内容`)
+      return
+    }
+
+    if (prevPlainText.includes(currentPlainText)) {
+      console.log(`[Memflow] 跳过被包含的 ${role} 片段`)
+      return
+    }
+
+    prevMessage.content = `${prevMessage.content}\n\n${trimmedContent}`
+    prevMessage.timestamp = new Date()
+    console.log(`[Memflow] 合并相邻的 ${role} 消息片段`)
+  }
+
   extractConversation(): Conversation {
     const messages: Message[] = []
 
@@ -76,7 +145,7 @@ export abstract class BaseAdapter implements IAdapter {
         Array.from(document.querySelectorAll(s)).forEach(el => {
           if (!seen.has(el)) { combined.push(el); seen.add(el); }
         })
-      } catch (e) {}
+      } catch (e) { }
     })
 
     const userSelectors = this.selectors.userMessage.split(",").map(s => s.trim())
@@ -86,34 +155,34 @@ export abstract class BaseAdapter implements IAdapter {
     const getRole = (el: Element): "user" | "assistant" | null => {
       if (userSelectors.some(sel => el.matches(sel))) return "user"
       if (aiSelectors.some(sel => el.matches(sel))) return "assistant"
-      
+
       const parentUser = el.closest(userSelectors.join(","))
       if (parentUser) return "user"
-      
+
       const parentAI = el.closest(aiSelectors.join(","))
       if (parentAI) return "assistant"
-      
+
       return null
     }
 
     // 智能化过滤逻辑
     let elements = combined.filter(el => {
       const elRole = getRole(el)
-      
+
       // 检查该元素内部包含的其他消息单元
       const children = combined.filter(other => other !== el && el.contains(other))
-      
+
       if (children.length > 0) {
         // 如果子元素中有任何一个角色与当前元素不同，说明当前是“回合容器”(Turn Container)
         // 我们应该丢弃容器，保留里面的子单元以确保对话拆分准确（Gemini 逻辑）
         const hasDifferentRoleChild = children.some(child => getRole(child) !== elRole)
         if (hasDifferentRoleChild) return false
-        
+
         // 如果所有子元素角色都相同，且就是当前元素的角色，说明子元素是碎块
         // 我们应该保留“父容器”以获得完整消息，丢弃子碎块（豆包逻辑）
-        return true 
+        return true
       }
-      
+
       // 如果没有子元素在列表中，但自身又是别人的子元素？
       const hasParentInList = combined.some(other => other !== el && other.contains(el))
       if (hasParentInList) {

@@ -28,7 +28,7 @@
       "sendButton": "div[class*='send-button'], button[class*='send-button']"
     },
     "gemini": {
-      "messageContainer": "message-content, .response-content, .model-response-text, .query-text-line, div[class*='user-content'], div[class*='model-response'], [data-turn]",
+      "messageContainer": "[data-turn], [data-message-author-role], user-query, model-response, [class*='conversation-turn']",
       "userMessage": ".query-text-line, [data-message-author-role='user'], div[class*='user-content'], [data-turn='user']",
       "aiMessage": "message-content, .response-content, .model-response-text, [data-message-author-role='assistant'], [data-turn='assistant']",
       "codeBlock": "pre code, code[class*='language-'], .code-block-container",
@@ -36,9 +36,9 @@
       "sendButton": "button[aria-label*='发送'], button[aria-label*='Send'], button[class*='send-button']"
     },
     "doubao": {
-      "messageContainer": "[data-testid='message_text_content'], .container-P2rR72, div[class*='message-list'] > div, div[class*='chat-message'], [class*='message-item']",
-      "userMessage": "[class*='user-message'], [class*='from-user'], [data-sender='user'], div[class*='user_']",
-      "aiMessage": "[class*='assistant-message'], [class*='from-assistant'], [class*='bot-message'], [data-sender='assistant'], div[class*='assistant_']",
+      "messageContainer": "div[data-testid='message_text_content'].container-QQkdo4, div.flow-markdown-body[data-testid='message_text_content'], div[data-testid='message_content'], div[data-testid='message_text_content'].container-P2rR72",
+      "userMessage": "div[data-testid='message_text_content'].container-QQkdo4",
+      "aiMessage": "div.flow-markdown-body[data-testid='message_text_content'], div[data-testid='message_text_content'].container-P2rR72, div[data-testid='message_content']",
       "codeBlock": "pre code, [class*='code-block'] code, .markdown-body pre",
       "inputBox": "textarea[placeholder*='输入'], textarea[placeholder*='发送'], div[class*='input'] textarea, div[contenteditable='true']",
       "sendButton": "button[type='submit'], button[class*='send'], button[aria-label*='发送']"
