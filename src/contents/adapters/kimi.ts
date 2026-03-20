@@ -19,6 +19,10 @@ export class KimiAdapter extends BaseAdapter {
     )
   }
 
+  getMessageElements(): HTMLElement[] {
+    return super.getMessageElements()
+  }
+
   /**
    * 提取对话内容，过滤掉文件大小等UI元素
    */
@@ -91,9 +95,6 @@ export class KimiAdapter extends BaseAdapter {
         }
       }
     }
-
-    return super.getMessageElements()
-  }
 
     // 如果还是没找到，使用基础适配器的逻辑
     if (messageElements.length === 0) {

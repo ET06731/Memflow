@@ -213,12 +213,22 @@ function enterSelectionMode() {
       updateSelectionToolbar()
     })
 
-    // 点击容器也可以触发复选框
-    container.addEventListener("click", (e) => {
-      if (e.target !== checkbox) {
-        checkbox.click()
-      }
-    })
+    // 全局点击消息块也可触发选择 (仅在选择模式下)
+    const blockClickHandler = (e: MouseEvent) => {
+      if (!isSelectionMode) return
+      // 避免重复触发 (如果点击的是复选框本身或其容器)
+      if (container.contains(e.target as Node)) return
+      
+      // 检查点击的是否是交互式元素（如代码块内的按钮、链接等）
+      const interactive = (e.target as HTMLElement).closest("a, button, [role='button']")
+      if (interactive) return
+
+      checkbox.click()
+    }
+    
+    el.addEventListener("click", blockClickHandler)
+    // 保存引用以便后续移除 (虽然目前逻辑是直接重建)
+    ;(el as any)._memflow_click_handler = blockClickHandler
 
     container.appendChild(checkbox)
     el.appendChild(container)
@@ -238,6 +248,11 @@ function exitSelectionMode() {
   // 移除所有复选框和选中样式
   document.querySelectorAll(".memflow-message-checkbox-container").forEach(el => el.remove())
   document.querySelectorAll("[data-memflow-message]").forEach(el => {
+    // 移除点击监听器
+    if ((el as any)._memflow_click_handler) {
+      el.removeEventListener("click", (el as any)._memflow_click_handler)
+      delete (el as any)._memflow_click_handler
+    }
     el.classList.remove("memflow-message-selected")
     el.removeAttribute("data-memflow-message")
   })
@@ -1017,8 +1032,9 @@ function createToolbarButton() {
     }
 
     .memflow-selection-mode [data-memflow-message]:hover {
-      background: rgba(245, 158, 11, 0.03) !important;
+      background: rgba(245, 158, 11, 0.08) !important;
       cursor: pointer;
+      box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.2) !important;
     }
 
     .memflow-checkbox {
@@ -1042,10 +1058,10 @@ function createToolbarButton() {
       content: '✓';
       position: absolute;
       color: #000;
-      font-size: 14px;
+      font-size: 16px;
       font-weight: bold;
-      left: 3px;
-      top: -1px;
+      left: 2px;
+      top: -3px;
     }
 
     .memflow-message-selected {
