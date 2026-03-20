@@ -208,12 +208,34 @@ export abstract class BaseAdapter implements IAdapter {
       const trimmedContent = content.trim()
 
       if (trimmedContent && trimmedContent.length > 0) {
-        messages.push({
-          role,
-          content: trimmedContent,
-          timestamp: new Date()
-        })
-        // console.log(`  [${index}] ${role}: extracted HTML length ${trimmedContent.length}`)
+        // 核心去重逻辑：拦截同一角色相邻且纯文本内容一致的 DOM 重复抓取
+        const prevMessage = messages[messages.length - 1]
+        let isDuplicate = false
+
+        if (prevMessage && prevMessage.role === role) {
+          const getPlainText = (html: string) => {
+            const tmp = document.createElement("div")
+            tmp.innerHTML = html
+            return (tmp.textContent || tmp.innerText || "").trim()
+          }
+          const currentPlainText = getPlainText(trimmedContent)
+          const prevPlainText = getPlainText(prevMessage.content)
+
+          if (currentPlainText === prevPlainText && currentPlainText.length > 0) {
+            isDuplicate = true
+          }
+        }
+
+        if (!isDuplicate) {
+          messages.push({
+            role,
+            content: trimmedContent,
+            timestamp: new Date()
+          })
+          // console.log(`  [${index}] ${role}: extracted HTML length ${trimmedContent.length}`)
+        } else {
+          console.log(`[Memflow] ⚠️ 拦截了重复的 ${role} 消息`)
+        }
       }
     })
 
