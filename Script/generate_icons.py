@@ -18,6 +18,6 @@ def generate_icons(source_path, target_dir):
     print(f"✅ Generated {os.path.join(target_dir, 'icon.png')}")
 
 if __name__ == "__main__":
-    source = "assets/Image 3.png"
+    source = "assets/Image 5.png"
     assets_dir = "assets"
     generate_icons(source, assets_dir)

@@ -49,9 +49,8 @@ export interface ObsidianConfig {
   defaultFolder: string
   fileNameFormat: string
   contentFormat: "callout" | "web"
-  integrationMethod: "advanced-uri" | "rest-api" | "download"
-  restApiUrl?: string
-  restApiToken?: string
+  exportMethod: "uri" | "download"
+  autoOpen: boolean
   saveSubtitles?: boolean
   saveSubtitlesWithTimestamp?: boolean
 }

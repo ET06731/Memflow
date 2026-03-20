@@ -136,9 +136,9 @@ export const config: PlasmoCSConfig = {
   ]
 }
 
-// 初始检测平台（页面加载时）
 let currentAdapter = detectPlatformAdapter()
 console.log("[Memflow] 初始适配器:", currentAdapter?.platformName || "未检测到")
+
 
 // 如果是 B 站页面（视频或列表），立即安装字幕拦截器
 if (currentAdapter instanceof BiliBiliAdapter && (currentAdapter.isVideoPage() || currentAdapter.isListPage())) {
@@ -162,6 +162,42 @@ function reDetectPlatform() {
  */
 function isBiliBiliVideo(): boolean {
   return currentAdapter?.platformName === "Bilibili"
+}
+
+
+/**
+ * 通用的最终导出逻辑
+ */
+async function finalizeExport(conversation: Conversation) {
+  const metadataGen = createMetadataGenerator()
+  const metadata = metadataGen.generateLocal(conversation)
+
+  const { obsidianConfig } = await chrome.storage.sync.get("obsidianConfig")
+  const markdownBuilder = createMarkdownBuilder()
+  const markdown = markdownBuilder.build(conversation, metadata, {
+    contentFormat: obsidianConfig?.contentFormat || "web"
+  })
+
+  if (!chrome.runtime?.id || !chrome.storage) {
+    downloadMarkdown(markdown, metadata.title)
+    showToast("已导出为文件", "success")
+    return
+  }
+
+  if (!obsidianConfig || !obsidianConfig.vaultName) {
+    downloadMarkdown(markdown, metadata.title)
+    showToast("请在扩展设置中配置 Obsidian", "warning")
+    return
+  }
+
+  if (obsidianConfig.exportMethod === "uri") {
+    const handler = new ObsidianURIHandler(obsidianConfig)
+    const result = await handler.exportToObsidian(markdown, metadata)
+    showToast(result.message, result.success ? "success" : "warning")
+  } else {
+    downloadMarkdown(markdown, metadata.title)
+    showToast("导出成功", "success")
+  }
 }
 
 async function exportDirect() {
@@ -310,52 +346,9 @@ async function exportDirect() {
       return
     }
 
-    const metadataGen = createMetadataGenerator()
-    const metadata = metadataGen.generateLocal(conversation)
+    console.log(`[Memflow] 提取到 ${conversation.messages.length} 条消息`)
 
-    console.log("[Memflow] 元数据生成完成:", metadata)
-
-    // 检查扩展连接是否可用
-    if (!chrome.runtime?.id || !chrome.storage) {
-      console.warn("[Memflow] 扩展 API 不可用，使用降级方案直接下载")
-      const markdownBuilder = createMarkdownBuilder()
-      const markdown = markdownBuilder.build(conversation, metadata, {
-        contentFormat: "web"
-      })
-      downloadMarkdown(markdown, metadata.title)
-      showToast("已导出为文件", "success")
-      return
-    }
-
-    const { obsidianConfig } = await chrome.storage.sync.get("obsidianConfig")
-
-    const markdownBuilder = createMarkdownBuilder()
-    const markdown = markdownBuilder.build(conversation, metadata, {
-      contentFormat: obsidianConfig?.contentFormat || "web"
-    })
-
-    console.log("[Memflow] Markdown 构建完成")
-
-    if (!obsidianConfig || !obsidianConfig.vaultName) {
-      downloadMarkdown(markdown, metadata.title)
-      showToast("请在扩展设置中配置 Obsidian", "warning")
-      return
-    }
-
-    if (obsidianConfig.exportMethod === "uri") {
-      const handler = new ObsidianURIHandler(obsidianConfig)
-      const result = await handler.exportToObsidian(markdown, metadata)
-
-      if (result.success) {
-        showToast(result.message, "success")
-      } else {
-        downloadMarkdown(markdown, metadata.title)
-        showToast("URI调用失败，已下载文件", "warning")
-      }
-    } else {
-      downloadMarkdown(markdown, metadata.title)
-      showToast("导出成功", "success")
-    }
+    await finalizeExport(conversation)
   } catch (error) {
     console.error("导出失败:", error)
     showToast(`导出失败: ${error.message}`, "error")
@@ -423,7 +416,8 @@ async function exportBiliBiliSmart() {
       provider: aiApiConfig.provider || "deepseek",
       apiKey: aiApiConfig.apiKey,
       baseUrl: aiApiConfig.baseUrl || "",
-      model: aiApiConfig.model || ""
+      model: aiApiConfig.model || "",
+      bilibiliPromptTemplate: aiApiConfig.bilibiliPromptTemplate || "tech"
     }
 
     const aiResult = await AIService.summarize({
@@ -784,7 +778,7 @@ function createToolbarButton() {
     }
 
     .memflow-toast::before {
-      content: '';
+      content: '●';
       width: 4px;
       height: 4px;
       border-radius: 50%;
@@ -829,16 +823,12 @@ function createToolbarButton() {
       }
     }
 
-    @keyframes memflow-toast-slide-out {
-      from { 
-        opacity: 1; 
-        transform: translateX(0);
-      }
       to { 
         opacity: 0; 
         transform: translateX(20px);
       }
     }
+
   `
   document.head.appendChild(style)
 
@@ -1301,4 +1291,5 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
     sendResponse({ success: true })
     return true
   }
+
 })

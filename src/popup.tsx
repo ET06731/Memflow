@@ -1,154 +1,44 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 
-interface ObsidianConfig {
-  vaultName: string
-  defaultFolder: string
-  fileNameFormat: string
-  contentFormat: "callout" | "web"
-  exportMethod: "uri" | "download"
-  autoOpen: boolean
-  saveSubtitles?: boolean
-  saveSubtitlesWithTimestamp?: boolean
-}
+import type { ObsidianConfig } from "./types/index"
 
-interface AIApiConfig {
-  enabled: boolean
-  provider: "openai" | "deepseek" | "kimi" | "gemini" | "custom"
-  apiKey: string
-  baseUrl: string
-  model: string
-  bilibiliPromptTemplate?: "tech" | "study"
-}
-
-// 多语言配置
 type Lang = "zh" | "en"
 
 const i18n = {
   zh: {
     vaultName: "仓库名称",
-    vaultNamePlaceholder: "例如：KnowledgeBase",
-    vaultNameHint: "必须与 Obsidian 仓库名称完全一致",
+    vaultNamePlaceholder: "例如 KnowledgeBase",
     defaultFolder: "默认文件夹",
     defaultFolderPlaceholder: "AI对话/DeepSeek",
-    defaultFolderHint: "使用 / 分隔嵌套文件夹，不要以 / 开头",
-    filenameFormat: "文件名格式",
-    filenameFormatPlaceholder: "{{date}}-{{title}}",
-    filenameFormatHint: "可用变量：{{date}} {{title}} {{platform}}",
-    contentFormat: "内容格式",
-    callout: "引用块",
-    calloutDesc: "Obsidian 风格",
-    web: "网页",
-    webDesc: "原始风格",
-    exportMethod: "导出方式",
-    obsidianUri: "Obsidian URI",
-    obsidianUriDesc: "直接导入",
-    download: "下载",
-    downloadDesc: "保存为文件",
-    saveSubtitles: "保存字幕原文",
-    saveSubtitlesDesc: "导出 B 站视频时包含字幕正文内容",
-    saveTimestamp: "包含时间戳",
-    saveTimestampDesc: "在字幕前显示对应时间戳（如 [01:23]）",
-    autoOpen: "导出后自动打开",
-    autoOpenDesc: "自动在 Obsidian 中打开对应笔记",
     saveConfig: "保存配置",
     saved: "已保存",
-    essentialNotes: "重要提示",
-    helpItems: [
-      "首次使用需要允许 Obsidian URI 协议访问",
-      "仓库名称区分大小写，必须完全匹配",
-      "不存在的文件夹会自动创建",
-      "URI 方式失败时会自动降级为下载",
-      "关闭「自动打开」可在后台静默导出"
-    ],
-    version: "v1.0.0",
-    // AI API 配置
-    aiApiConfig: "AI API 配置",
-    aiApiEnabled: "启用 AI 总结",
-    aiApiProvider: "API 提供商",
-    aiApiKey: "API Key",
-    aiApiKeyPlaceholder: "输入你的 API Key",
-    aiApiBaseUrl: "Base URL",
-    aiApiBaseUrlPlaceholder: "可选：自定义端点",
-    aiApiModel: "模型",
-    aiApiModelHint: "留空使用默认模型"
+    exportChat: "立即导出",
+    smartExport: "智能导出",
+    exportHint: "",
+    smartHint: "使用 AI 模型总结字幕",
+    settings: "设置"
   },
   en: {
     vaultName: "Vault Name",
     vaultNamePlaceholder: "e.g., KnowledgeBase",
-    vaultNameHint: "Must match your Obsidian vault name exactly",
     defaultFolder: "Default Folder",
     defaultFolderPlaceholder: "AI-Chats/DeepSeek",
-    defaultFolderHint: "Use / for nested folders, no leading slash",
-    filenameFormat: "Filename Format",
-    filenameFormatPlaceholder: "{{date}}-{{title}}",
-    filenameFormatHint: "Available: {{date}} {{title}} {{platform}}",
-    contentFormat: "Content Format",
-    callout: "Callout",
-    calloutDesc: "Obsidian Style",
-    web: "Web",
-    webDesc: "Original Style",
-    exportMethod: "Export Method",
-    obsidianUri: "Obsidian URI",
-    obsidianUriDesc: "Direct import",
-    download: "Download",
-    downloadDesc: "Save as file",
-    saveSubtitles: "Save Original Subtitles",
-    saveSubtitlesDesc: "Include original subtitle text when exporting Bilibili videos",
-    saveTimestamp: "Include Timestamps",
-    saveTimestampDesc: "Add timestamps to each subtitle line",
-    autoOpen: "Auto-open after export",
-    autoOpenDesc: "Automatically open the note in Obsidian",
     saveConfig: "Save Configuration",
     saved: "Saved",
-    essentialNotes: "Essential Notes",
-    helpItems: [
-      "First use requires allowing Obsidian URI scheme access",
-      "Vault names are case-sensitive and must match exactly",
-      "Non-existent folders will be created automatically",
-      "Fallback to download if URI method fails",
-      "Disable 'Auto-open' for silent background export"
-    ],
-    version: "v1.0.0",
-    // AI API 配置
-    aiApiConfig: "AI API Configuration",
-    aiApiEnabled: "Enable AI Summary",
-    aiApiProvider: "API Provider",
-    aiApiKey: "API Key",
-    aiApiKeyPlaceholder: "Enter your API key",
-    aiApiBaseUrl: "Base URL",
-    aiApiBaseUrlPlaceholder: "Optional: Custom endpoint",
-    aiApiModel: "Model",
-    aiApiModelHint: "Leave empty for default model"
+    exportChat: "Quick Export",
+    smartExport: "Smart Export",
+    exportHint: "",
+    smartHint: "Summarize subtitles with AI model",
+    settings: "Settings"
   }
 }
 
-// 检测语言
 function detectLanguage(): Lang {
   const lang = navigator.language || (navigator as any).userLanguage
   if (lang && lang.toLowerCase().startsWith("zh")) {
     return "zh"
   }
   return "en"
-}
-
-// Custom hooks for animations
-function useRipple() {
-  const [ripples, setRipples] = useState<
-    Array<{ id: number; x: number; y: number }>
-  >([])
-
-  const triggerRipple = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const id = Date.now()
-    setRipples((prev) => [...prev, { id, x, y }])
-    setTimeout(() => {
-      setRipples((prev) => prev.filter((r) => r.id !== id))
-    }, 600)
-  }
-
-  return { ripples, triggerRipple }
 }
 
 function Popup() {
@@ -161,36 +51,10 @@ function Popup() {
     fileNameFormat: "{{date}}-{{title}}",
     contentFormat: "callout",
     exportMethod: "download",
-    autoOpen: true,
-    saveSubtitles: true,
-    saveSubtitlesWithTimestamp: false
-  })
-
-  // AI API 配置状态
-  const [aiConfig, setAiConfig] = useState<AIApiConfig>({
-    enabled: false,
-    provider: "deepseek",
-    apiKey: "",
-    baseUrl: "",
-    model: "",
-    bilibiliPromptTemplate: "tech"
+    autoOpen: true
   })
 
   const [saved, setSaved] = useState(false)
-  const [focusedField, setFocusedField] = useState<string | null>(null)
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [showAiConfig, setShowAiConfig] = useState(false)
-  const { ripples, triggerRipple } = useRipple()
-  const saveButtonRef = useRef<HTMLButtonElement>(null)
-
-  // API 提供商选项
-  const providers = [
-    { id: "openai", name: "OpenAI", defaultModel: "gpt-3.5-turbo" },
-    { id: "deepseek", name: "DeepSeek", defaultModel: "deepseek-chat" },
-    { id: "kimi", name: "Kimi", defaultModel: "moonshot-v1-8k" },
-    { id: "gemini", name: "Gemini", defaultModel: "gemini-1.5-flash" },
-    { id: "custom", name: "自定义", defaultModel: "" }
-  ]
 
   useEffect(() => {
     chrome.storage.sync.get("obsidianConfig", (data) => {
@@ -198,69 +62,27 @@ function Popup() {
         setConfig(data.obsidianConfig)
       }
     })
-    chrome.storage.sync.get("aiApiConfig", (data) => {
-      if (data.aiApiConfig) {
-        setAiConfig(data.aiApiConfig)
-      }
-    })
   }, [])
 
-  const saveConfig = (e: React.MouseEvent<HTMLButtonElement>) => {
-    triggerRipple(e)
-    chrome.storage.sync.set(
-      { obsidianConfig: config, aiApiConfig: aiConfig },
-      () => {
-        setSaved(true)
-        setTimeout(() => setSaved(false), 2000)
-      }
-    )
+  const saveConfig = () => {
+    chrome.storage.sync.set({ obsidianConfig: config }, () => {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    })
   }
 
-  const isValid = config.vaultName.trim().length > 0
-
-  const buttonStyle = {
-    background: saved
-      ? "#10b981"
-      : isValid
-        ? "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
-        : "#333",
-    color: saved ? "#fff" : isValid ? "#000" : "#666"
-  } as React.CSSProperties
+  const openOptions = () => {
+    chrome.runtime.openOptionsPage()
+  }
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
         
-        @keyframes gradientFlow {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        
         @keyframes float {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-10px); }
-        }
-        
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-        
-        @keyframes ripple {
-          0% { transform: scale(0); opacity: 0.5; }
-          100% { transform: scale(4); opacity: 0; }
-        }
-        
-        @keyframes glow {
-          0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
-          50% { box-shadow: 0 0 40px rgba(245, 158, 11, 0.5); }
-        }
-        
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
         }
         
         .popup-container {
@@ -270,24 +92,16 @@ function Popup() {
           color: #e5e5e5;
           position: relative;
           overflow: hidden;
-          border: none;
-          outline: none;
-          box-shadow: none;
         }
         
         body, html {
           margin: 0;
           padding: 0;
-          border: none;
-          outline: none;
         }
         
         .noise-overlay {
           position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
+          top: 0; left: 0; right: 0; bottom: 0;
           opacity: 0.03;
           pointer-events: none;
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
@@ -295,331 +109,68 @@ function Popup() {
         
         .ambient-glow {
           position: absolute;
-          top: -50%;
-          right: -30%;
-          width: 300px;
-          height: 300px;
+          top: -50%; right: -30%;
+          width: 300px; height: 300px;
           background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, transparent 70%);
           pointer-events: none;
           animation: float 8s ease-in-out infinite;
         }
         
         .header {
-          padding: 20px 20px 16px;
-          position: relative;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 16px;
           background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, transparent 100%);
           border-bottom: 1px solid rgba(245, 158, 11, 0.15);
         }
-        
-        .header::before {
-          content: '';
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 1px;
-          background: linear-gradient(90deg, transparent 0%, rgba(245, 158, 11, 0.5) 50%, transparent 100%);
+
+        .brand-title {
+          font-family: 'Cinzel', serif;
+          font-size: 16px;
+          font-weight: 600;
+          color: #f59e0b;
+          margin: 0;
         }
-        
-        .brand-icon {
-          width: 36px;
-          height: 36px;
-          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-          border-radius: 12px;
+
+        .header-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .icon-btn {
+          width: 28px;
+          height: 28px;
+          border: none;
+          border-radius: 6px;
+          background: rgba(255, 255, 255, 0.05);
+          cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 20px;
-          margin-bottom: 12px;
-          box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
-          animation: glow 3s ease-in-out infinite;
-        }
-        
-        .brand-title {
-          font-family: 'Cinzel', serif;
-          font-size: 20px;
-          font-weight: 600;
-          color: #f5f5f5;
-          margin: 0 0 4px 0;
-          letter-spacing: 1px;
-          background: linear-gradient(135deg, #f5f5f5 0%, #f59e0b 50%, #f5f5f5 100%);
-          background-size: 200% auto;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          animation: shimmer 4s linear infinite;
-        }
-        
-        .brand-subtitle {
-          font-size: 11px;
-          color: #888;
-          margin: 0;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-        }
-        
-        .form-section {
-          padding: 12px 16px;
-        }
-        
-        .form-group {
-          margin-bottom: 10px;
-          position: relative;
-        }
-        
-        .form-label {
-          display: block;
-          font-size: 11px;
-          font-weight: 500;
+          transition: all 0.2s ease;
           color: #aaa;
-          margin-bottom: 4px;
         }
-        
-        .form-label .required {
+
+        .icon-btn:hover {
+          background: rgba(245, 158, 11, 0.2);
           color: #f59e0b;
-          margin-left: 4px;
         }
-        
-        .input-wrapper {
+
+        .icon-btn.settings:hover {
+          transform: rotate(45deg);
+        }
+
+        .content-area {
+          padding: 16px;
           position: relative;
-        }
-        
-        .form-input {
-          width: 100%;
-          padding: 8px 10px;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 6px;
-          font-family: inherit;
-          font-size: 14px;
-          color: #e5e5e5;
-          box-sizing: border-box;
-          outline: none;
-          transition: all 0.2s ease;
-          pointer-events: auto;
-          position: relative;
-        }
-        
-        .form-input::placeholder {
-          color: #555;
-        }
-        
-        .form-input:hover {
-          background: rgba(255, 255, 255, 0.04);
-          border-color: rgba(255, 255, 255, 0.08);
-        }
-        
-        .form-input:focus {
-          background: rgba(245, 158, 11, 0.05);
-          border-color: rgba(245, 158, 11, 0.4);
-          box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
-        }
-        
-        .input-hint {
-          font-size: 11px;
-          color: #666;
-          margin-top: 4px;
-        }
-        
-        .method-selector {
-          display: flex;
-          gap: 8px;
-          margin-bottom: 14px;
-        }
-        
-        .method-option {
-          flex: 1;
-          position: relative;
-        }
-        
-        .method-radio {
-          position: absolute;
-          opacity: 0;
-          cursor: pointer;
-        }
-        
-        .method-label {
-          display: block;
-          padding: 10px 8px;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.04);
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          text-align: center;
-        }
-        
-        .method-radio:checked + .method-label {
-          background: rgba(245, 158, 11, 0.1);
-          border-color: rgba(245, 158, 11, 0.5);
-          box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
-        }
-        
-        .method-label:hover {
-          background: rgba(255, 255, 255, 0.05);
-          transform: translateY(-2px);
-        }
-        
-        .method-icon {
-          font-size: 18px;
-          margin-bottom: 4px;
-          display: block;
-        }
-        
-        .method-title {
-          font-size: 12px;
-          font-weight: 500;
-          color: #e5e5e5;
-          display: block;
-          margin-bottom: 2px;
-        }
-        
-        .method-desc {
-          font-size: 10px;
-          color: #888;
-          display: block;
-        }
-        
-        .method-badge {
-          position: absolute;
-          top: -6px;
-          right: -6px;
-          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-          color: #000;
-          font-size: 8px;
-          font-weight: 700;
-          padding: 2px 6px;
-          border-radius: 4px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
+          z-index: 10;
         }
 
-        .checkbox-label {
-          display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          padding: 12px;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .checkbox-label:hover {
-          background: rgba(245, 158, 11, 0.05);
-          border-color: rgba(245, 158, 11, 0.2);
-        }
-
-        .checkbox-input {
-          width: 18px;
-          height: 18px;
-          margin: 2px 0 0 0;
-          accent-color: #f59e0b;
-          cursor: pointer;
-        }
-
-        .checkbox-text {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-
-        .checkbox-title {
-          font-size: 13px;
-          font-weight: 500;
-          color: #e5e5e5;
-        }
-
-        .checkbox-desc {
-          font-size: 11px;
-          color: #888;
-        }
-        
-        .save-button {
-          width: 100%;
-          padding: 12px 16px;
-          border: none;
-          border-radius: 8px;
-          font-family: inherit;
-          font-size: 14px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          position: relative;
-          overflow: hidden;
-          margin-top: 4px;
-        }
-        
-        .save-button:not(:disabled) {
-          cursor: pointer;
-        }
-        
-        .save-button:disabled {
-          cursor: not-allowed;
-        }
-        
-        .save-button:not(:disabled):hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 30px rgba(245, 158, 11, 0.4);
-        }
-        
-        .save-button:not(:disabled):active {
-          transform: translateY(0);
-        }
-        
-        .ripple {
-          position: absolute;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.4);
-          width: 20px;
-          height: 20px;
-          margin-left: -10px;
-          margin-top: -10px;
-          animation: ripple 0.6s ease-out;
-          pointer-events: none;
-        }
-        
-        .help-section {
-          padding: 14px 20px;
-          background: rgba(245, 158, 11, 0.02);
-          border-top: 1px solid rgba(245, 158, 11, 0.06);
-        }
-        
-        .help-title {
-          font-size: 12px;
-          font-weight: 600;
-          color: #f59e0b;
-          margin: 0 0 8px 0;
-        }
-        
-        .help-list {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-        
-        .help-item {
-          font-size: 12px;
-          color: #888;
-          padding: 4px 0 4px 14px;
-          position: relative;
-          line-height: 1.4;
-        }
-        
-        .help-item::before {
-          content: '›';
-          position: absolute;
-          left: 0;
-          color: #f59e0b;
-          font-size: 14px;
-          font-weight: bold;
-        }
-        
         .quick-export-btn {
           width: 100%;
-          padding: 10px 14px;
-          margin-bottom: 12px;
+          padding: 12px 14px;
+          margin-bottom: 8px;
           background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
           border: none;
           border-radius: 10px;
@@ -640,13 +191,9 @@ function Popup() {
           box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
         }
         
-        .quick-export-btn:active {
-          transform: translateY(0);
-        }
-
         .smart-export-btn {
           width: 100%;
-          padding: 10px 14px;
+          padding: 12px 14px;
           margin-bottom: 8px;
           background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
           border: none;
@@ -668,674 +215,150 @@ function Popup() {
           box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
         }
 
-        .smart-export-btn:active {
-          transform: translateY(0);
-        }
-        
-        .footer {
-          padding: 10px 20px;
-          background: rgba(0, 0, 0, 0.3);
-          border-top: 1px solid rgba(255, 255, 255, 0.03);
-          font-size: 11px;
-          color: #555;
+        .partial-export-btn {
+          width: 100%;
+          padding: 12px 14px;
+          margin-bottom: 8px;
+          background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+          border: none;
+          border-radius: 10px;
+          font-family: inherit;
+          font-size: 14px;
+          font-weight: 600;
+          color: #fff;
+          cursor: pointer;
+          transition: all 0.2s ease;
           display: flex;
-          justify-content: space-between;
           align-items: center;
+          justify-content: center;
+          gap: 8px;
         }
         
-        .footer a {
-          color: #f59e0b;
-          text-decoration: none;
-          transition: color 0.3s ease;
-        }
-        
-        .footer a:hover {
-          color: #fbbf24;
+        .partial-export-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
         }
 
-        .accordion-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 10px 0;
-          cursor: pointer;
+        .tip-text {
+          font-size: 10px;
+          color: #666;
+          text-align: center;
+          margin-bottom: 12px;
+        }
+
+        .config-preview {
+          margin-top: 16px;
+          padding-top: 16px;
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .form-group {
+          margin-bottom: 12px;
+        }
+
+        .form-label {
+          display: block;
+          font-size: 11px;
+          color: #888;
+          margin-bottom: 4px;
+        }
+
+        .form-input {
+          width: 100%;
+          padding: 8px 10px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 6px;
           color: #e5e5e5;
           font-size: 12px;
+          box-sizing: border-box;
+          outline: none;
+        }
+
+        .form-input:focus {
+          border-color: rgba(245, 158, 11, 0.4);
+          background: rgba(245, 158, 11, 0.02);
+        }
+
+        .save-btn {
+          width: 100%;
+          padding: 8px;
+          background: ${saved ? "#10b981" : "rgba(245, 158, 11, 0.1)"};
+          color: ${saved ? "#fff" : "#f59e0b"};
+          border: 1px solid ${saved ? "#10b981" : "rgba(245, 158, 11, 0.3)"};
+          border-radius: 6px;
+          font-size: 12px;
           font-weight: 600;
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
-          margin-top: 8px;
-          transition: color 0.2s ease;
+          cursor: pointer;
+          transition: all 0.2s;
         }
-        .accordion-header:hover {
-          color: #f59e0b;
-        }
-        .accordion-icon {
-          transition: transform 0.3s ease;
-          opacity: 0.7;
-          font-size: 10px;
-        }
-        .accordion-icon.open {
-          transform: rotate(180deg);
-        }
-        .accordion-content {
-          overflow: hidden;
-          transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease;
-          max-height: 0;
-          opacity: 0;
-          padding-top: 0;
-        }
-        .accordion-content.open {
-          max-height: 1000px;
-          opacity: 1;
-          padding-top: 8px;
+
+        .save-btn:hover {
+          background: ${saved ? "#10b981" : "rgba(245, 158, 11, 0.2)"};
         }
       `}</style>
 
       <div className="popup-container">
         <div className="noise-overlay" />
         <div className="ambient-glow" />
+        
+        <div className="header">
+          <div className="brand">
+            <h1 className="brand-title">MemFlow</h1>
+          </div>
+          <div className="header-actions">
+            <a href="https://github.com/ET06731/Memflow" target="_blank" rel="noopener noreferrer" className="icon-btn" title="GitHub">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+              </svg>
+            </a>
+            <button className="icon-btn settings" onClick={openOptions} title={t.settings}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
 
-        {/* Quick Export Button */}
-        <div className="form-section" style={{ paddingBottom: 0 }}>
-          <button
-            className="quick-export-btn"
-            onClick={async () => {
-              try {
-                const [tab] = await chrome.tabs.query({
-                  active: true,
-                  currentWindow: true
-                })
-                if (!tab.id || !tab.url) {
-                  alert("无法获取当前标签页")
-                  return
-                }
-
-                // 检查URL是否匹配支持的平台
-                const supportedPatterns = [
-                  "chat.deepseek.com",
-                  "openai.com",
-                  "chatgpt.com",
-                  "kimi.moonshot.cn",
-                  "kimi.ai",
-                  "kimi.com",
-                  "gemini.google.com",
-                  "doubao.com",
-                  "bilibili.com/video",
-                  "bilibili.com/list"
-                ]
-
-                const isSupported = supportedPatterns.some((pattern) =>
-                  tab.url.includes(pattern)
-                )
-
-                if (!isSupported) {
-                  alert(
-                    "当前页面不支持导出，请在支持的 AI 对话页面或 B 站视频页面使用"
-                  )
-                  return
-                }
-
-                // 尝试发送消息
-                try {
-                  const response = await chrome.tabs.sendMessage(tab.id, {
-                    action: "triggerExport"
-                  })
-                  if (response?.success) {
-                    console.log("[Memflow] 导出成功")
-                  }
-                } catch (msgError: any) {
-                  // 内容脚本可能未加载，尝试注入
-                  console.log("[Memflow] 内容脚本未加载，尝试重新加载...")
-
-                  try {
-                    await chrome.scripting.executeScript({
-                      target: { tabId: tab.id },
-                      files: ["contents/index.tsx"]
-                    })
-
-                    // 等待一下再试
-                    await new Promise((resolve) => setTimeout(resolve, 500))
-
-                    await chrome.tabs.sendMessage(tab.id, {
-                      action: "triggerExport"
-                    })
-                  } catch (injectError) {
-                    console.error("[Memflow] 注入失败:", injectError)
-                    alert("扩展未正确加载，请刷新页面后重试")
-                  }
-                }
-              } catch (e: any) {
-                console.error("[Memflow] 导出错误:", e)
-                alert("导出失败: " + (e.message || "请在支持的页面使用"))
-              }
-            }}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round">
+        <div className="content-area">
+          <button className="quick-export-btn" onClick={async () => {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+            if (tab?.id) chrome.tabs.sendMessage(tab.id, { action: "triggerExport" }).catch(() => {})
+          }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            {lang === "zh" ? "立即导出当前对话" : "Export Current Chat"}
+            {t.exportChat}
           </button>
-          <div
-            style={{
-              fontSize: "10px",
-              color: "#666",
-              textAlign: "center",
-              marginBottom: "12px"
-            }}>
-            {lang === "zh"
-              ? "点击后在当前页面触发导出"
-              : "Click to trigger export on current page"}
-          </div>
+          {t.exportHint && <div className="tip-text">{t.exportHint}</div>}
 
-          <button
-            className="smart-export-btn"
-            onClick={async () => {
-              try {
-                const [tab] = await chrome.tabs.query({
-                  active: true,
-                  currentWindow: true
-                })
-                if (!tab.id || !tab.url) return
-
-                const supportedPatterns = [
-                  "chat.deepseek.com",
-                  "openai.com",
-                  "chatgpt.com",
-                  "kimi.moonshot.cn",
-                  "kimi.ai",
-                  "kimi.com",
-                  "gemini.google.com",
-                  "doubao.com",
-                  "bilibili.com/video",
-                  "bilibili.com/list"
-                ]
-                const isSupported = supportedPatterns.some((pattern) =>
-                  tab.url?.includes(pattern)
-                )
-
-                if (!isSupported) {
-                  alert(
-                    "当前页面不支持导出，请在支持的 AI 对话页面或 B 站视频页面使用"
-                  )
-                  return
-                }
-
-                try {
-                  const response = await chrome.tabs.sendMessage(tab.id, {
-                    action: "triggerExportSmart"
-                  })
-                  if (response?.success) console.log("[Memflow] 智能导出请求成功")
-                } catch (msgError: any) {
-                  console.log("[Memflow] 尝试重新加载内容脚本", msgError)
-                  // 注入脚本兜底逻辑
-                  try {
-                    await chrome.scripting.executeScript({
-                      target: { tabId: tab.id },
-                      files: ["contents/index.tsx"]
-                    })
-                    await new Promise((resolve) => setTimeout(resolve, 500))
-                    await chrome.tabs.sendMessage(tab.id, {
-                      action: "triggerExportSmart"
-                    })
-                  } catch (e) {
-                    console.error("注入失败:", e)
-                  }
-                }
-              } catch (e) {
-                console.error("[Memflow] 智能导出错误:", e)
-              }
-            }}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round">
+          <button className="smart-export-btn" onClick={async () => {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+            if (tab?.id) chrome.tabs.sendMessage(tab.id, { action: "triggerExportSmart" }).catch(() => {})
+          }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-              <path d="M5 3v4" />
-              <path d="M19 17v4" />
-              <path d="M3 5h4" />
-              <path d="M17 19h4" />
+              <path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" />
             </svg>
-            {lang === "zh" ? "智能导出" : "Smart Export"}
+            {t.smartExport}
           </button>
-          <div
-            style={{
-              fontSize: "10px",
-              color: "#666",
-              textAlign: "center",
-              marginBottom: "12px"
-            }}>
-            {lang === "zh"
-              ? "调用大模型并总结字幕内容"
-              : "Summarize subtitles with AI model"}
-          </div>
-        </div>
 
-        {/* Config Section */}
-        <div className="form-section">
-          <div className="form-group">
-            <label className="form-label">
-              {t.vaultName}
-              <span className="required">*</span>
-            </label>
-            <div
-              className={`input-wrapper ${focusedField === "vault" ? "focused" : ""}`}>
-              <input
-                type="text"
-                className="form-input"
-                value={config.vaultName}
-                onChange={(e) =>
-                  setConfig({ ...config, vaultName: e.target.value })
-                }
-                onFocus={() => setFocusedField("vault")}
-                onBlur={() => setFocusedField(null)}
-                placeholder={t.vaultNamePlaceholder}
-              />
-            </div>
-            <span className="input-hint">{t.vaultNameHint}</span>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">{t.defaultFolder}</label>
-            <div
-              className={`input-wrapper ${focusedField === "folder" ? "focused" : ""}`}>
-              <input
-                type="text"
-                className="form-input"
-                value={config.defaultFolder}
-                onChange={(e) =>
-                  setConfig({ ...config, defaultFolder: e.target.value })
-                }
-                onFocus={() => setFocusedField("folder")}
-                onBlur={() => setFocusedField(null)}
-                placeholder={t.defaultFolderPlaceholder}
-              />
-            </div>
-            <span className="input-hint">{t.defaultFolderHint}</span>
-          </div>
-
-          <div
-            className="accordion-header"
-            onClick={() => setShowAdvanced(!showAdvanced)}>
-            <span>{lang === "zh" ? "高级导出设置" : "Advanced Export Settings"}</span>
-            <span className={`accordion-icon ${showAdvanced ? "open" : ""}`}>▼</span>
-          </div>
-          <div className={`accordion-content ${showAdvanced ? "open" : ""}`}>
-
+          <div className="config-preview">
             <div className="form-group">
-              <label className="form-label">{t.filenameFormat}</label>
-              <div
-                className={`input-wrapper ${focusedField === "format" ? "focused" : ""}`}>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={config.fileNameFormat}
-                  onChange={(e) =>
-                    setConfig({ ...config, fileNameFormat: e.target.value })
-                  }
-                  onFocus={() => setFocusedField("format")}
-                  onBlur={() => setFocusedField(null)}
-                  placeholder={t.filenameFormatPlaceholder}
-                />
-              </div>
-              <span className="input-hint">{t.filenameFormatHint}</span>
+              <label className="form-label">{t.vaultName}</label>
+              <input type="text" className="form-input" value={config.vaultName} onChange={(e) => setConfig({ ...config, vaultName: e.target.value })} placeholder={t.vaultNamePlaceholder} />
             </div>
-
             <div className="form-group">
-              <label className="form-label">{t.contentFormat}</label>
-              <div className="method-selector">
-                <div className="method-option">
-                  <input
-                    type="radio"
-                    id="callout"
-                    className="method-radio"
-                    checked={config.contentFormat === "callout"}
-                    onChange={() =>
-                      setConfig({ ...config, contentFormat: "callout" })
-                    }
-                  />
-                  <label htmlFor="callout" className="method-label">
-                    <span className="method-badge">New</span>
-                    <span className="method-icon">❝❞</span>
-                    <span className="method-title">{t.callout}</span>
-                    <span className="method-desc">{t.calloutDesc}</span>
-                  </label>
-                </div>
-                <div className="method-option">
-                  <input
-                    type="radio"
-                    id="web"
-                    className="method-radio"
-                    checked={
-                      config.contentFormat === "web" || !config.contentFormat
-                    }
-                    onChange={() =>
-                      setConfig({ ...config, contentFormat: "web" })
-                    }
-                  />
-                  <label htmlFor="web" className="method-label">
-                    <span className="method-icon">📄</span>
-                    <span className="method-title">{t.web}</span>
-                    <span className="method-desc">{t.webDesc}</span>
-                  </label>
-                </div>
-              </div>
+              <label className="form-label">{t.defaultFolder}</label>
+              <input type="text" className="form-input" value={config.defaultFolder} onChange={(e) => setConfig({ ...config, defaultFolder: e.target.value })} placeholder={t.defaultFolderPlaceholder} />
             </div>
-
-            <div className="form-group">
-              <label className="form-label">{t.exportMethod}</label>
-              <div className="method-selector">
-                <div className="method-option">
-                  <input
-                    type="radio"
-                    id="uri"
-                    className="method-radio"
-                    checked={config.exportMethod === "uri"}
-                    onChange={() => setConfig({ ...config, exportMethod: "uri" })}
-                  />
-                  <label htmlFor="uri" className="method-label">
-                    <span className="method-badge">Best</span>
-                    <span className="method-icon">◉</span>
-                    <span className="method-title">{t.obsidianUri}</span>
-                    <span className="method-desc">{t.obsidianUriDesc}</span>
-                  </label>
-                </div>
-                <div className="method-option">
-                  <input
-                    type="radio"
-                    id="download"
-                    className="method-radio"
-                    checked={config.exportMethod === "download"}
-                    onChange={() =>
-                      setConfig({ ...config, exportMethod: "download" })
-                    }
-                  />
-                  <label htmlFor="download" className="method-label">
-                    <span className="method-icon">▼</span>
-                    <span className="method-title">{t.download}</span>
-                    <span className="method-desc">{t.downloadDesc}</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="checkbox-label" style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginTop: "16px" }}>
-                <input
-                  type="checkbox"
-                  className="checkbox-input"
-                  checked={config.saveSubtitles !== false}
-                  onChange={(e) => {
-                    const checked = e.target.checked
-                    setConfig({
-                      ...config,
-                      saveSubtitles: checked,
-                      // 如果关闭保存字幕，自动关联关闭时间戳
-                      saveSubtitlesWithTimestamp: checked ? config.saveSubtitlesWithTimestamp : false
-                    })
-                  }}
-                />
-                <div className="checkbox-text">
-                  <span className="checkbox-title">{t.saveSubtitles}</span>
-                  <span className="checkbox-desc" style={{ fontSize: "11px", color: "#888" }}>
-                    {t.saveSubtitlesDesc}
-                  </span>
-                </div>
-              </label>
-
-              {config.saveSubtitles !== false && (
-                <label className="checkbox-label" style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginTop: "12px", marginLeft: "24px" }}>
-                  <input
-                    type="checkbox"
-                    className="checkbox-input"
-                    checked={config.saveSubtitlesWithTimestamp === true}
-                    onChange={(e) =>
-                      setConfig({
-                        ...config,
-                        saveSubtitlesWithTimestamp: e.target.checked
-                      })
-                    }
-                  />
-                  <div className="checkbox-text">
-                    <span className="checkbox-title">{t.saveTimestamp}</span>
-                    <span className="checkbox-desc" style={{ fontSize: "11px", color: "#888" }}>
-                      {t.saveTimestampDesc}
-                    </span>
-                  </div>
-                </label>
-              )}
-            </div>
-
-            {config.exportMethod === "uri" && (
-              <div className="form-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={config.autoOpen}
-                    onChange={(e) =>
-                      setConfig({ ...config, autoOpen: e.target.checked })
-                    }
-                    className="checkbox-input"
-                  />
-                  <span className="checkbox-text">
-                    <span className="checkbox-title">{t.autoOpen}</span>
-                    <span className="checkbox-desc">{t.autoOpenDesc}</span>
-                  </span>
-                </label>
-              </div>
-            )}
+            <button className="save-btn" onClick={saveConfig}>
+              {saved ? `✓ ${t.saved}` : t.saveConfig}
+            </button>
           </div>
-
-          {/* AI API 配置 */}
-          <div>
-            <div
-              className="accordion-header"
-              style={{ color: "#f59e0b", borderTop: "1px solid rgba(245, 158, 11, 0.2)", marginTop: "12px", paddingTop: "12px", paddingBottom: "12px" }}
-              onClick={() => setShowAiConfig(!showAiConfig)}>
-              <span>{t.aiApiConfig || "AI API Configuration"}</span>
-              <span className={`accordion-icon ${showAiConfig ? "open" : ""}`}>▼</span>
-            </div>
-            <div className={`accordion-content ${showAiConfig ? "open" : ""}`}>
-
-              <div className="form-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={aiConfig.enabled}
-                    onChange={(e) =>
-                      setAiConfig({ ...aiConfig, enabled: e.target.checked })
-                    }
-                    className="checkbox-input"
-                  />
-                  <span className="checkbox-text">
-                    <span className="checkbox-title">
-                      {t.aiApiEnabled || "Enable AI Summary"}
-                    </span>
-                    <span className="checkbox-desc">
-                      {lang === "zh"
-                        ? "用于 B 站视频 AI 总结功能"
-                        : "For Bilibili video AI summary"}
-                    </span>
-                  </span>
-                </label>
-              </div>
-
-              {aiConfig.enabled && (
-                <>
-                  <div className="form-group">
-                    <label className="form-label">{t.aiApiProvider}</label>
-                    <select
-                      className="form-input"
-                      value={aiConfig.provider}
-                      onChange={(e) => {
-                        const provider = providers.find(
-                          (p) => p.id === e.target.value
-                        )
-                        setAiConfig({
-                          ...aiConfig,
-                          provider: e.target.value as AIApiConfig["provider"],
-                          model: provider?.defaultModel || ""
-                        })
-                      }}
-                      style={{ cursor: "pointer" }}>
-                      {providers.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">
-                      {t.aiApiKey}
-                      <span style={{ color: "#ef4444", marginLeft: "4px" }}>
-                        *
-                      </span>
-                    </label>
-                    <div className="input-wrapper">
-                      <input
-                        type="password"
-                        className="form-input"
-                        value={aiConfig.apiKey}
-                        onChange={(e) =>
-                          setAiConfig({ ...aiConfig, apiKey: e.target.value })
-                        }
-                        placeholder={t.aiApiKeyPlaceholder}
-                      />
-                    </div>
-                  </div>
-
-                  {aiConfig.provider === "custom" && (
-                    <div className="form-group">
-                      <label className="form-label">{t.aiApiBaseUrl}</label>
-                      <div className="input-wrapper">
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={aiConfig.baseUrl}
-                          onChange={(e) =>
-                            setAiConfig({
-                              ...aiConfig,
-                              baseUrl: e.target.value
-                            })
-                          }
-                          placeholder={t.aiApiBaseUrlPlaceholder}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="form-group">
-                    <label className="form-label">{t.aiApiModel}</label>
-                    <div className="input-wrapper">
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={aiConfig.model}
-                        onChange={(e) =>
-                          setAiConfig({ ...aiConfig, model: e.target.value })
-                        }
-                        placeholder={
-                          providers.find((p) => p.id === aiConfig.provider)
-                            ?.defaultModel || ""
-                        }
-                      />
-                    </div>
-                    <span className="input-hint">{t.aiApiModelHint}</span>
-                  </div>
-                  
-                  <div className="form-group" style={{ marginTop: "16px" }}>
-                    <label className="form-label">{lang === "zh" ? "B站提示词模板" : "Bilibili Prompt Template"}</label>
-                    <div className="method-selector">
-                      <div className="method-option">
-                        <input
-                          type="radio"
-                          id="template-tech"
-                          className="method-radio"
-                          checked={aiConfig.bilibiliPromptTemplate === "tech" || !aiConfig.bilibiliPromptTemplate}
-                          onChange={() => setAiConfig({ ...aiConfig, bilibiliPromptTemplate: "tech" })}
-                        />
-                        <label htmlFor="template-tech" className="method-label" style={{ padding: "8px" }}>
-                          <span className="method-icon">💻</span>
-                          <span className="method-title">{lang === "zh" ? "科技专栏" : "Tech Column"}</span>
-                          <span className="method-desc" style={{ fontSize: "10px" }}>{lang === "zh" ? "深度科技复盘文章" : "Deep tech review article"}</span>
-                        </label>
-                      </div>
-                      <div className="method-option">
-                        <input
-                          type="radio"
-                          id="template-study"
-                          className="method-radio"
-                          checked={aiConfig.bilibiliPromptTemplate === "study"}
-                          onChange={() => setAiConfig({ ...aiConfig, bilibiliPromptTemplate: "study" })}
-                        />
-                        <label htmlFor="template-study" className="method-label" style={{ padding: "8px" }}>
-                          <span className="method-icon">📚</span>
-                          <span className="method-title">{lang === "zh" ? "知识梳理" : "Study Notes"}</span>
-                          <span className="method-desc" style={{ fontSize: "10px" }}>{lang === "zh" ? "结构化学习笔记" : "Structured study notes"}</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          <button
-            ref={saveButtonRef}
-            className="save-button"
-            onClick={saveConfig}
-            disabled={!isValid}
-            style={buttonStyle}>
-            {saved ? `◉ ${t.saved}` : t.saveConfig}
-            {ripples.map((ripple) => (
-              <span
-                key={ripple.id}
-                className="ripple"
-                style={{ left: ripple.x, top: ripple.y }}
-              />
-            ))}
-          </button>
-        </div>
-
-        {/* Help Section */}
-        <div className="help-section">
-          <h3 className="help-title">{t.essentialNotes}</h3>
-          <ul className="help-list">
-            {t.helpItems.map((item, index) => (
-              <li key={index} className="help-item">
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Footer */}
-        <div className="footer">
-          <span>v1.0.0</span>
-          <a
-            href="https://github.com/ET06731/Memflow"
-            target="_blank"
-            rel="noopener noreferrer">
-            GitHub →
-          </a>
         </div>
       </div>
     </>

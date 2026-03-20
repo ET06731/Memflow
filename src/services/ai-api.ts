@@ -111,7 +111,6 @@ export class AIService {
     const prompt = this.buildPrompt(subtitles, videoInfo, config.bilibiliPromptTemplate)
 
     console.log("[AIService] 开始调用 API:", config.provider, model)
-    console.log("[AIService] 实际发送的 Prompt:", prompt)
 
     try {
       const result = await this.callAPI({
