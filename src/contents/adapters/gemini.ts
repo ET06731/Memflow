@@ -16,6 +16,10 @@ export class GeminiAdapter extends BaseAdapter {
     )
   }
 
+  getMessageElements(): HTMLElement[] {
+    return super.getMessageElements()
+  }
+
   /**
    * Gemini 特定的提取逻辑
    */

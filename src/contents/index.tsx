@@ -139,6 +139,9 @@ export const config: PlasmoCSConfig = {
 let currentAdapter = detectPlatformAdapter()
 console.log("[Memflow] 初始适配器:", currentAdapter?.platformName || "未检测到")
 
+// 选择模式状态
+let isSelectionMode = false
+const selectedElements = new Set<HTMLElement>()
 
 // 如果是 B 站页面（视频或列表），立即安装字幕拦截器
 if (currentAdapter instanceof BiliBiliAdapter && (currentAdapter.isVideoPage() || currentAdapter.isListPage())) {
@@ -164,6 +167,163 @@ function isBiliBiliVideo(): boolean {
   return currentAdapter?.platformName === "Bilibili"
 }
 
+/**
+ * 进入选择模式
+ */
+function enterSelectionMode() {
+  if (isSelectionMode) return
+  isSelectionMode = true
+  selectedElements.clear()
+
+  if (!currentAdapter) reDetectPlatform()
+  if (!currentAdapter) return
+
+  const elements = currentAdapter.getMessageElements()
+  console.log(`[Memflow] 进入选择模式，共 ${elements.length} 条消息`)
+
+  document.body.classList.add("memflow-selection-mode")
+
+  elements.forEach((el, index) => {
+    // 标记为 Memflow 消息元素，用于 CSS 样式
+    el.setAttribute("data-memflow-message", "true")
+
+    // 确保元素是相对定位，以便定位复选框
+    const style = window.getComputedStyle(el)
+    if (style.position === "static") {
+      el.style.position = "relative"
+    }
+
+    const container = document.createElement("div")
+    container.className = "memflow-message-checkbox-container"
+    
+    const checkbox = document.createElement("input")
+    checkbox.type = "checkbox"
+    checkbox.className = "memflow-checkbox"
+    checkbox.dataset.index = index.toString()
+
+    checkbox.addEventListener("change", (e) => {
+      const isChecked = (e.target as HTMLInputElement).checked
+      if (isChecked) {
+        selectedElements.add(el)
+        el.classList.add("memflow-message-selected")
+      } else {
+        selectedElements.delete(el)
+        el.classList.remove("memflow-message-selected")
+      }
+      updateSelectionToolbar()
+    })
+
+    // 点击容器也可以触发复选框
+    container.addEventListener("click", (e) => {
+      if (e.target !== checkbox) {
+        checkbox.click()
+      }
+    })
+
+    container.appendChild(checkbox)
+    el.appendChild(container)
+  })
+
+  showSelectionToolbar()
+}
+
+/**
+ * 退出选择模式
+ */
+function exitSelectionMode() {
+  isSelectionMode = false
+  selectedElements.clear()
+  document.body.classList.remove("memflow-selection-mode")
+
+  // 移除所有复选框和选中样式
+  document.querySelectorAll(".memflow-message-checkbox-container").forEach(el => el.remove())
+  document.querySelectorAll("[data-memflow-message]").forEach(el => {
+    el.classList.remove("memflow-message-selected")
+    el.removeAttribute("data-memflow-message")
+  })
+  
+  // 移除工具栏
+  const toolbar = document.querySelector(".memflow-selection-toolbar")
+  if (toolbar) toolbar.remove()
+}
+
+/**
+ * 显示/更新底部工具栏
+ */
+function showSelectionToolbar() {
+  let toolbar = document.querySelector(".memflow-selection-toolbar")
+  if (!toolbar) {
+    toolbar = document.createElement("div")
+    toolbar.className = "memflow-selection-toolbar"
+    document.body.appendChild(toolbar)
+  }
+
+  updateSelectionToolbar()
+}
+
+function updateSelectionToolbar() {
+  const toolbar = document.querySelector(".memflow-selection-toolbar")
+  if (!toolbar) return
+
+  const count = selectedElements.size
+  const total = currentAdapter?.getMessageElements().length || 0
+
+  toolbar.innerHTML = `
+    <div class="memflow-toolbar-info">已选择 ${count} / ${total} 条消息</div>
+    <div class="memflow-toolbar-actions">
+      <button class="memflow-btn memflow-btn-ghost" id="memflow-select-all">${count === total ? "取消全选" : "全选"}</button>
+      <button class="memflow-btn memflow-btn-primary" id="memflow-export-selected" ${count === 0 ? "disabled" : ""}>立即导出</button>
+      <button class="memflow-btn memflow-btn-ghost" id="memflow-cancel-selection">取消</button>
+    </div>
+  `
+
+  document.getElementById("memflow-select-all")?.addEventListener("click", () => {
+    const checkboxes = document.querySelectorAll(".memflow-checkbox") as NodeListOf<HTMLInputElement>
+    const allChecked = count === total
+    checkboxes.forEach(cb => {
+      if (cb.checked === allChecked) {
+        cb.click()
+      }
+    })
+  })
+
+  document.getElementById("memflow-cancel-selection")?.addEventListener("click", exitSelectionMode)
+  
+  document.getElementById("memflow-export-selected")?.addEventListener("click", performPartialExport)
+}
+
+/**
+ * 执行部分导出
+ */
+async function performPartialExport() {
+  if (selectedElements.size === 0) return
+
+  try {
+    showToast(`正在导出 ${selectedElements.size} 条消息...`, "warning")
+    
+    const elements = Array.from(selectedElements).sort((a, b) => 
+      a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1
+    )
+
+    const messages = elements.map(el => currentAdapter?.extractMessage(el)).filter(m => m !== null) as any[]
+
+    const conversation: Conversation = {
+      id: crypto.randomUUID(),
+      platform: currentAdapter?.platformName || "Unknown",
+      url: window.location.href,
+      messages,
+      createdAt: new Date()
+    }
+
+    // 后续逻辑与 exportDirect 后半部分一致，提取为通用方法更好
+    await finalizeExport(conversation)
+    
+    exitSelectionMode()
+  } catch (error) {
+    console.error("部分导出失败:", error)
+    showToast(`导出失败: ${error.message}`, "error")
+  }
+}
 
 /**
  * 通用的最终导出逻辑
@@ -829,6 +989,135 @@ function createToolbarButton() {
       }
     }
 
+    /* 选择模式样式 */
+    .memflow-selection-mode .memflow-message-checkbox-container {
+      display: flex !important;
+    }
+
+    .memflow-message-checkbox-container {
+      display: none;
+      position: absolute;
+      left: 10px !important; /* 修改：放在元素内部左侧 */
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+    }
+
+    /* 针对选择模式下的消息元素样式 */
+    .memflow-selection-mode [data-memflow-message] {
+      position: relative !important;
+      padding-left: 50px !important; /* 强制留出复选框空间 */
+      border-radius: 8px !important;
+      transition: all 0.2s ease;
+    }
+
+    .memflow-selection-mode [data-memflow-message]:hover {
+      background: rgba(245, 158, 11, 0.03) !important;
+      cursor: pointer;
+    }
+
+    .memflow-checkbox {
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(245, 158, 11, 0.5);
+      border-radius: 4px;
+      background: rgba(10, 10, 15, 0.8);
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .memflow-checkbox:checked {
+      background: #f59e0b;
+      border-color: #f59e0b;
+    }
+
+    .memflow-checkbox:checked::after {
+      content: '✓';
+      position: absolute;
+      color: #000;
+      font-size: 14px;
+      font-weight: bold;
+      left: 3px;
+      top: -1px;
+    }
+
+    .memflow-message-selected {
+      outline: 2px solid rgba(245, 158, 11, 0.3) !important;
+      background: rgba(245, 158, 11, 0.05) !important;
+    }
+
+    /* 底部选择栏 */
+    .memflow-selection-toolbar {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(18, 18, 26, 0.9);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 100px;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      z-index: 2147483647;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      animation: memflow-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes memflow-slide-up {
+      from { transform: translate(-50%, 100px); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
+    }
+
+    .memflow-toolbar-info {
+      font-size: 14px;
+      font-weight: 500;
+      color: #f59e0b;
+    }
+
+    .memflow-toolbar-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .memflow-btn {
+      padding: 6px 16px;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .memflow-btn-primary {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #000;
+    }
+
+    .memflow-btn-primary:disabled {
+      background: #333;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    .memflow-btn-ghost {
+      background: rgba(255, 255, 255, 0.05);
+      color: #e5e5e5;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .memflow-btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
   `
   document.head.appendChild(style)
 
@@ -1292,4 +1581,17 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
     return true
   }
 
+  if (message.action === "triggerSelectionMode" || message.action === "ENTER_SELECTION_MODE" || message.type === "ENTER_SELECTION_MODE") {
+    console.log("[Memflow] 收到部分导出请求 (进入选择模式)")
+    if (!currentAdapter) reDetectPlatform()
+    
+    if (isSelectionMode) {
+      exitSelectionMode()
+    } else {
+      enterSelectionMode()
+    }
+    
+    sendResponse({ success: true })
+    return true
+  }
 })

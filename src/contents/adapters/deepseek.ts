@@ -16,6 +16,10 @@ export class DeepSeekAdapter extends BaseAdapter {
     )
   }
 
+  getMessageElements(): HTMLElement[] {
+    return super.getMessageElements()
+  }
+
   /**
    * DeepSeek 特定的提取逻辑（如果需要覆盖基类方法）
    */

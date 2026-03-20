@@ -16,7 +16,9 @@ const i18n = {
     smartExport: "智能导出",
     exportHint: "",
     smartHint: "使用 AI 模型总结字幕",
-    settings: "设置"
+    settings: "设置",
+    partialExport: "部分导出",
+    partialHint: "进入选择模式，可选单条/多条导出"
   },
   en: {
     vaultName: "Vault Name",
@@ -29,7 +31,9 @@ const i18n = {
     smartExport: "Smart Export",
     exportHint: "",
     smartHint: "Summarize subtitles with AI model",
-    settings: "Settings"
+    settings: "Settings",
+    partialExport: "Partial Export",
+    partialHint: "Enter selection mode to pick messages"
   }
 }
 
@@ -345,6 +349,18 @@ function Popup() {
             </svg>
             {t.smartExport}
           </button>
+          <button className="partial-export-btn" onClick={async () => {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+            if (tab?.id) chrome.tabs.sendMessage(tab.id, { action: "triggerSelectionMode", type: "ENTER_SELECTION_MODE" }).catch(() => {})
+          }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <polyline points="9 11 12 14 22 4"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            {t.partialExport}
+          </button>
+          <div className="tip-text">{t.partialHint}</div>
 
           <div className="config-preview">
             <div className="form-group">

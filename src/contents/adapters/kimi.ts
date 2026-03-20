@@ -92,6 +92,9 @@ export class KimiAdapter extends BaseAdapter {
       }
     }
 
+    return super.getMessageElements()
+  }
+
     // 如果还是没找到，使用基础适配器的逻辑
     if (messageElements.length === 0) {
       console.log("[Memflow] Kimi: 使用基础适配器提取")
