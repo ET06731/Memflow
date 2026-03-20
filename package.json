@@ -1,7 +1,7 @@
 {
   "name": "memflow",
   "displayName": "Memflow - Export AI Chat to Obsidian",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Export your conversations from AI platforms perfectly to Obsidian.",
   "author": "Memflow Team",
   "scripts": {
