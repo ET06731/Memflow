@@ -1,14 +1,13 @@
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import iconUrl from "url:../assets/icon.png"
 
 import type { AIApiConfig, ObsidianConfig } from "./types/index"
-import iconUrl from "url:../assets/icon.png"
 
 interface TemplateConfig {
   bilibili: {
     enabled: boolean
     templateType: "tech" | "study" | "coding" | "news" | "custom"
     customTemplate: string
-    includeOriginalSubtitles: boolean
     includeTimestamp: boolean
     maxSummaryLength: number
     outputFormat: "markdown" | "obsidian-callout" | "json"
@@ -81,7 +80,8 @@ const i18n = {
     download: "Download",
     downloadDesc: "Save as file",
     saveSubtitles: "Save Original Subtitles",
-    saveSubtitlesDesc: "Include original subtitle text when exporting Bilibili videos",
+    saveSubtitlesDesc:
+      "Include original subtitle text when exporting Bilibili videos",
     saveTimestamp: "Include Timestamps",
     saveTimestampDesc: "Add timestamps to each subtitle line",
     autoOpen: "Auto-open after export",
@@ -138,7 +138,6 @@ function Options() {
       enabled: true,
       templateType: "tech",
       customTemplate: "",
-      includeOriginalSubtitles: true,
       includeTimestamp: false,
       maxSummaryLength: 2000,
       outputFormat: "markdown"
@@ -148,7 +147,9 @@ function Options() {
     }
   })
 
-  const [activeTab, setActiveTab] = useState<"general" | "template" | "ai" | "about">("general")
+  const [activeTab, setActiveTab] = useState<
+    "general" | "template" | "ai" | "about"
+  >("general")
   const [saved, setSaved] = useState(false)
 
   const providers = [
@@ -160,16 +161,23 @@ function Options() {
   ]
 
   useEffect(() => {
-    chrome.storage.sync.get(["obsidianConfig", "aiApiConfig", "templateConfig"], (data) => {
-      if (data.obsidianConfig) setConfig(data.obsidianConfig)
-      if (data.aiApiConfig) setAiConfig(data.aiApiConfig)
-      if (data.templateConfig) setTemplateConfig(data.templateConfig)
-    })
+    chrome.storage.sync.get(
+      ["obsidianConfig", "aiApiConfig", "templateConfig"],
+      (data) => {
+        if (data.obsidianConfig) setConfig(data.obsidianConfig)
+        if (data.aiApiConfig) setAiConfig(data.aiApiConfig)
+        if (data.templateConfig) setTemplateConfig(data.templateConfig)
+      }
+    )
   }, [])
 
   const saveConfig = () => {
     chrome.storage.sync.set(
-      { obsidianConfig: config, aiApiConfig: aiConfig, templateConfig: templateConfig },
+      {
+        obsidianConfig: config,
+        aiApiConfig: aiConfig,
+        templateConfig: templateConfig
+      },
       () => {
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
@@ -180,13 +188,26 @@ function Options() {
   const isValid = config.vaultName.trim().length > 0
 
   // Custom Select Component for better UI
-  const CustomSelect = ({ value, options, onChange, label }: { value: string, options: { id: string, name: string, icon?: string }[], onChange: (val: any) => void, label: string }) => {
+  const CustomSelect = ({
+    value,
+    options,
+    onChange,
+    label
+  }: {
+    value: string
+    options: { id: string; name: string; icon?: string }[]
+    onChange: (val: any) => void
+    label: string
+  }) => {
     const [isOpen, setIsOpen] = useState(false)
     const containerRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
-        if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        if (
+          containerRef.current &&
+          !containerRef.current.contains(event.target as Node)
+        ) {
           setIsOpen(false)
         }
       }
@@ -194,34 +215,61 @@ function Options() {
       return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [])
 
-    const selectedOption = options.find(o => o.id === value) || options[0]
+    const selectedOption = options.find((o) => o.id === value) || options[0]
 
     return (
       <div className="custom-select-container" ref={containerRef}>
         <label className="form-label">{label}</label>
-        <div className={`select-trigger ${isOpen ? 'active' : ''}`} onClick={() => setIsOpen(!isOpen)}>
+        <div
+          className={`select-trigger ${isOpen ? "active" : ""}`}
+          onClick={() => setIsOpen(!isOpen)}>
           <div className="select-value">
-            {selectedOption.icon && <span className="option-icon">{selectedOption.icon}</span>}
+            {selectedOption.icon && (
+              <span className="option-icon">{selectedOption.icon}</span>
+            )}
             <span>{selectedOption.name}</span>
           </div>
-          <svg className={`chevron ${isOpen ? 'open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            className={`chevron ${isOpen ? "open" : ""}`}
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </div>
         {isOpen && (
           <div className="select-dropdown">
-            {options.map(option => (
-              <div 
-                key={option.id} 
-                className={`select-option ${value === option.id ? 'selected' : ''}`}
+            {options.map((option) => (
+              <div
+                key={option.id}
+                className={`select-option ${value === option.id ? "selected" : ""}`}
                 onClick={() => {
                   onChange(option.id)
                   setIsOpen(false)
-                }}
-              >
-                {option.icon && <span className="option-icon">{option.icon}</span>}
+                }}>
+                {option.icon && (
+                  <span className="option-icon">{option.icon}</span>
+                )}
                 <span>{option.name}</span>
-                {value === option.id && <svg className="check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                {value === option.id && (
+                  <svg
+                    className="check-icon"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                )}
               </div>
             ))}
           </div>
@@ -511,16 +559,24 @@ function Options() {
       <div className="options-page">
         <div className="sidebar">
           <div className="sidebar-header">Memflow Settings</div>
-          <div className={`tab ${activeTab === "general" ? "active" : ""}`} onClick={() => setActiveTab("general")}>
+          <div
+            className={`tab ${activeTab === "general" ? "active" : ""}`}
+            onClick={() => setActiveTab("general")}>
             {lang === "zh" ? "通用设置" : "General"}
           </div>
-          <div className={`tab ${activeTab === "template" ? "active" : ""}`} onClick={() => setActiveTab("template")}>
+          <div
+            className={`tab ${activeTab === "template" ? "active" : ""}`}
+            onClick={() => setActiveTab("template")}>
             {lang === "zh" ? "模板设置" : "Template"}
           </div>
-          <div className={`tab ${activeTab === "ai" ? "active" : ""}`} onClick={() => setActiveTab("ai")}>
+          <div
+            className={`tab ${activeTab === "ai" ? "active" : ""}`}
+            onClick={() => setActiveTab("ai")}>
             {t.aiApiConfig}
           </div>
-          <div className={`tab ${activeTab === "about" ? "active" : ""}`} onClick={() => setActiveTab("about")}>
+          <div
+            className={`tab ${activeTab === "about" ? "active" : ""}`}
+            onClick={() => setActiveTab("about")}>
             {lang === "zh" ? "关于 Memflow" : "About"}
           </div>
         </div>
@@ -529,32 +585,88 @@ function Options() {
           <div className="content">
             {activeTab === "general" && (
               <>
-                <h2 className="section-title">{lang === "zh" ? "Obsidian 导出配置" : "Obsidian Export Configuration"}</h2>
+                <h2 className="section-title">
+                  {lang === "zh"
+                    ? "Obsidian 导出配置"
+                    : "Obsidian Export Configuration"}
+                </h2>
                 <div className="form-group">
-                  <label className="form-label">{t.vaultName} <span style={{color: "#f59e0b"}}>*</span></label>
-                  <input type="text" className="form-input" value={config.vaultName} onChange={(e) => setConfig({ ...config, vaultName: e.target.value })} placeholder={t.vaultNamePlaceholder} />
+                  <label className="form-label">
+                    {t.vaultName} <span style={{ color: "#f59e0b" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={config.vaultName}
+                    onChange={(e) =>
+                      setConfig({ ...config, vaultName: e.target.value })
+                    }
+                    placeholder={t.vaultNamePlaceholder}
+                  />
                   <span className="input-hint">{t.vaultNameHint}</span>
                 </div>
                 <div className="form-group">
                   <label className="form-label">{t.defaultFolder}</label>
-                  <input type="text" className="form-input" value={config.defaultFolder} onChange={(e) => setConfig({ ...config, defaultFolder: e.target.value })} placeholder={t.defaultFolderPlaceholder} />
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={config.defaultFolder}
+                    onChange={(e) =>
+                      setConfig({ ...config, defaultFolder: e.target.value })
+                    }
+                    placeholder={t.defaultFolderPlaceholder}
+                  />
                   <span className="input-hint">{t.defaultFolderHint}</span>
                 </div>
                 <div className="form-group">
                   <label className="form-label">{t.filenameFormat}</label>
-                  <input type="text" className="form-input" value={config.fileNameFormat} onChange={(e) => setConfig({ ...config, fileNameFormat: e.target.value })} placeholder={t.filenameFormatPlaceholder} />
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={config.fileNameFormat}
+                    onChange={(e) =>
+                      setConfig({ ...config, fileNameFormat: e.target.value })
+                    }
+                    placeholder={t.filenameFormatPlaceholder}
+                  />
                   <span className="input-hint">{t.filenameFormatHint}</span>
                 </div>
                 <div className="form-group">
                   <label className="form-label">{t.contentFormat}</label>
                   <div className="method-selector">
                     <div className="method-option">
-                      <input type="radio" id="callout" name="contentFormat" className="method-radio" checked={config.contentFormat === "callout"} onChange={() => setConfig({ ...config, contentFormat: "callout" })} />
-                      <label htmlFor="callout" className="method-label"><b>{t.callout}</b><br/><small>{t.calloutDesc}</small></label>
+                      <input
+                        type="radio"
+                        id="callout"
+                        name="contentFormat"
+                        className="method-radio"
+                        checked={config.contentFormat === "callout"}
+                        onChange={() =>
+                          setConfig({ ...config, contentFormat: "callout" })
+                        }
+                      />
+                      <label htmlFor="callout" className="method-label">
+                        <b>{t.callout}</b>
+                        <br />
+                        <small>{t.calloutDesc}</small>
+                      </label>
                     </div>
                     <div className="method-option">
-                      <input type="radio" id="web" name="contentFormat" className="method-radio" checked={config.contentFormat === "web"} onChange={() => setConfig({ ...config, contentFormat: "web" })} />
-                      <label htmlFor="web" className="method-label"><b>{t.web}</b><br/><small>{t.webDesc}</small></label>
+                      <input
+                        type="radio"
+                        id="web"
+                        name="contentFormat"
+                        className="method-radio"
+                        checked={config.contentFormat === "web"}
+                        onChange={() =>
+                          setConfig({ ...config, contentFormat: "web" })
+                        }
+                      />
+                      <label htmlFor="web" className="method-label">
+                        <b>{t.web}</b>
+                        <br />
+                        <small>{t.webDesc}</small>
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -562,116 +674,290 @@ function Options() {
                   <label className="form-label">{t.exportMethod}</label>
                   <div className="method-selector">
                     <div className="method-option">
-                      <input type="radio" id="uri" name="exportMethod" className="method-radio" checked={config.exportMethod === "uri"} onChange={() => setConfig({ ...config, exportMethod: "uri" })} />
-                      <label htmlFor="uri" className="method-label"><b>{t.obsidianUri}</b><br/><small>{t.obsidianUriDesc}</small></label>
+                      <input
+                        type="radio"
+                        id="uri"
+                        name="exportMethod"
+                        className="method-radio"
+                        checked={config.exportMethod === "uri"}
+                        onChange={() =>
+                          setConfig({ ...config, exportMethod: "uri" })
+                        }
+                      />
+                      <label htmlFor="uri" className="method-label">
+                        <b>{t.obsidianUri}</b>
+                        <br />
+                        <small>{t.obsidianUriDesc}</small>
+                      </label>
                     </div>
                     <div className="method-option">
-                      <input type="radio" id="download" name="exportMethod" className="method-radio" checked={config.exportMethod === "download"} onChange={() => setConfig({ ...config, exportMethod: "download" })} />
-                      <label htmlFor="download" className="method-label"><b>{t.download}</b><br/><small>{t.downloadDesc}</small></label>
+                      <input
+                        type="radio"
+                        id="download"
+                        name="exportMethod"
+                        className="method-radio"
+                        checked={config.exportMethod === "download"}
+                        onChange={() =>
+                          setConfig({ ...config, exportMethod: "download" })
+                        }
+                      />
+                      <label htmlFor="download" className="method-label">
+                        <b>{t.download}</b>
+                        <br />
+                        <small>{t.downloadDesc}</small>
+                      </label>
                     </div>
                   </div>
                 </div>
                 {config.exportMethod === "uri" && (
                   <div className="form-group">
                     <label className="checkbox-label">
-                      <input type="checkbox" className="checkbox-input" checked={config.autoOpen} onChange={(e) => setConfig({ ...config, autoOpen: e.target.checked })} />
-                      <div className="checkbox-text"><span className="checkbox-title">{t.autoOpen}</span><span className="checkbox-desc">{t.autoOpenDesc}</span></div>
+                      <input
+                        type="checkbox"
+                        className="checkbox-input"
+                        checked={config.autoOpen}
+                        onChange={(e) =>
+                          setConfig({ ...config, autoOpen: e.target.checked })
+                        }
+                      />
+                      <div className="checkbox-text">
+                        <span className="checkbox-title">{t.autoOpen}</span>
+                        <span className="checkbox-desc">{t.autoOpenDesc}</span>
+                      </div>
                     </label>
                   </div>
                 )}
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      className="checkbox-input"
+                      checked={config.saveSubtitles}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          saveSubtitles: e.target.checked
+                        })
+                      }
+                    />
+                    <div className="checkbox-text">
+                      <span className="checkbox-title">{t.saveSubtitles}</span>
+                      <span className="checkbox-desc">
+                        {t.saveSubtitlesDesc}
+                      </span>
+                    </div>
+                  </label>
+                </div>
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      className="checkbox-input"
+                      checked={config.saveSubtitlesWithTimestamp}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          saveSubtitlesWithTimestamp: e.target.checked
+                        })
+                      }
+                    />
+                    <div className="checkbox-text">
+                      <span className="checkbox-title">{t.saveTimestamp}</span>
+                      <span className="checkbox-desc">
+                        {t.saveTimestampDesc}
+                      </span>
+                    </div>
+                  </label>
+                </div>
               </>
             )}
 
             {activeTab === "template" && (
               <>
-                <h2 className="section-title">{lang === "zh" ? "B站视频总结模板" : "Bilibili Summary Template"}</h2>
+                <h2 className="section-title">
+                  {lang === "zh"
+                    ? "B站视频总结模板"
+                    : "Bilibili Summary Template"}
+                </h2>
                 <div className="form-group">
-                <CustomSelect 
-                  label={lang === "zh" ? "首选模板风格" : "Template Style"}
-                  value={templateConfig.bilibili.templateType}
-                  options={[
-                    { id: "tech", name: "💻 科技专栏" },
-                    { id: "study", name: "📚 知识梳理" },
-                    { id: "coding", name: "🔥 代码教程" },
-                    { id: "news", name: "📰 资讯简报" },
-                    { id: "custom", name: "✏️ 自定义模板" }
-                  ]}
-                  onChange={(val) => setTemplateConfig({...templateConfig, bilibili: {...templateConfig.bilibili, templateType: val}})}
-                />
+                  <CustomSelect
+                    label={lang === "zh" ? "首选模板风格" : "Template Style"}
+                    value={templateConfig.bilibili.templateType}
+                    options={[
+                      { id: "tech", name: "💻 科技专栏" },
+                      { id: "study", name: "📚 知识梳理" },
+                      { id: "coding", name: "🔥 代码教程" },
+                      { id: "news", name: "📰 资讯简报" },
+                      { id: "custom", name: "✏️ 自定义模板" }
+                    ]}
+                    onChange={(val) =>
+                      setTemplateConfig({
+                        ...templateConfig,
+                        bilibili: {
+                          ...templateConfig.bilibili,
+                          templateType: val
+                        }
+                      })
+                    }
+                  />
                 </div>
                 {templateConfig.bilibili.templateType === "custom" && (
                   <div className="form-group">
-                    <label className="form-label">{lang === "zh" ? "提示词定义" : "Prompt Definition"}</label>
-                    <textarea className="form-input" value={templateConfig.bilibili.customTemplate} onChange={(e) => setTemplateConfig({...templateConfig, bilibili: {...templateConfig.bilibili, customTemplate: e.target.value}})} rows={8} />
-                    <span className="input-hint">{lang === "zh" ? "变量：{{title}}, {{summary}}, {{subtitles}}, {{url}}" : "Vars: {{title}}, {{summary}}, {{subtitles}}, {{url}}"}</span>
+                    <label className="form-label">
+                      {lang === "zh" ? "提示词定义" : "Prompt Definition"}
+                    </label>
+                    <textarea
+                      className="form-input"
+                      value={templateConfig.bilibili.customTemplate}
+                      onChange={(e) =>
+                        setTemplateConfig({
+                          ...templateConfig,
+                          bilibili: {
+                            ...templateConfig.bilibili,
+                            customTemplate: e.target.value
+                          }
+                        })
+                      }
+                      rows={8}
+                    />
+                    <span className="input-hint">
+                      {lang === "zh"
+                        ? "变量：{{title}}, {{summary}}, {{subtitles}}, {{url}}"
+                        : "Vars: {{title}}, {{summary}}, {{subtitles}}, {{url}}"}
+                    </span>
                   </div>
                 )}
                 <div className="form-group">
-                <CustomSelect 
-                  label={lang === "zh" ? "输出格式" : "Output Format"}
-                  value={templateConfig.bilibili.outputFormat}
-                  options={[
-                    { id: "markdown", name: "Markdown" },
-                    { id: "obsidian-callout", name: "Obsidian Callout (🎨 推荐)" },
-                    { id: "json", name: "Raw JSON" }
-                  ]}
-                  onChange={(val) => setTemplateConfig({...templateConfig, bilibili: {...templateConfig.bilibili, outputFormat: val}})}
-                />
+                  <CustomSelect
+                    label={lang === "zh" ? "输出格式" : "Output Format"}
+                    value={templateConfig.bilibili.outputFormat}
+                    options={[
+                      { id: "markdown", name: "Markdown" },
+                      {
+                        id: "obsidian-callout",
+                        name: "Obsidian Callout (🎨 推荐)"
+                      },
+                      { id: "json", name: "Raw JSON" }
+                    ]}
+                    onChange={(val) =>
+                      setTemplateConfig({
+                        ...templateConfig,
+                        bilibili: {
+                          ...templateConfig.bilibili,
+                          outputFormat: val
+                        }
+                      })
+                    }
+                  />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{lang === "zh" ? "摘要长度上限 (字)" : "Max Summary Length"}</label>
-                  <input type="number" className="form-input" value={templateConfig.bilibili.maxSummaryLength} onChange={(e) => setTemplateConfig({...templateConfig, bilibili: {...templateConfig.bilibili, maxSummaryLength: parseInt(e.target.value) || 2000}})} />
-                </div>
-                <div className="form-group">
-                  <label className="checkbox-label">
-                    <input type="checkbox" className="checkbox-input" checked={templateConfig.bilibili.includeOriginalSubtitles} onChange={(e) => setTemplateConfig({...templateConfig, bilibili: {...templateConfig.bilibili, includeOriginalSubtitles: e.target.checked}})} />
-                    <div className="checkbox-text"><span className="checkbox-title">{lang === "zh" ? "导出原文" : "Include Subtitles"}</span><span className="checkbox-desc">在总结下方附带视频字幕原文</span></div>
+                  <label className="form-label">
+                    {lang === "zh" ? "摘要长度上限 (字)" : "Max Summary Length"}
                   </label>
-                </div>
-                <div className="form-group">
-                  <label className="checkbox-label">
-                    <input type="checkbox" className="checkbox-input" checked={templateConfig.bilibili.includeTimestamp} onChange={(e) => setTemplateConfig({...templateConfig, bilibili: {...templateConfig.bilibili, includeTimestamp: e.target.checked}})} />
-                    <div className="checkbox-text"><span className="checkbox-title">{lang === "zh" ? "显示时间戳" : "Include Timestamps"}</span></div>
-                  </label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={templateConfig.bilibili.maxSummaryLength}
+                    onChange={(e) =>
+                      setTemplateConfig({
+                        ...templateConfig,
+                        bilibili: {
+                          ...templateConfig.bilibili,
+                          maxSummaryLength: parseInt(e.target.value) || 2000
+                        }
+                      })
+                    }
+                  />
                 </div>
               </>
             )}
 
             {activeTab === "ai" && (
               <>
-                <h2 className="section-title">{lang === "zh" ? "AI API 服务配置" : "AI API Configuration"}</h2>
+                <h2 className="section-title">
+                  {lang === "zh" ? "AI API 服务配置" : "AI API Configuration"}
+                </h2>
                 <div className="form-group">
                   <label className="checkbox-label">
-                    <input type="checkbox" className="checkbox-input" checked={aiConfig.enabled} onChange={(e) => setAiConfig({ ...aiConfig, enabled: e.target.checked })} />
-                    <div className="checkbox-text"><span className="checkbox-title">{t.aiApiEnabled}</span><span className="checkbox-desc">{lang === "zh" ? "启用后可对视频字幕进行多维度的智能分析" : "Enable AI-powered video analysis"}</span></div>
+                    <input
+                      type="checkbox"
+                      className="checkbox-input"
+                      checked={aiConfig.enabled}
+                      onChange={(e) =>
+                        setAiConfig({ ...aiConfig, enabled: e.target.checked })
+                      }
+                    />
+                    <div className="checkbox-text">
+                      <span className="checkbox-title">{t.aiApiEnabled}</span>
+                      <span className="checkbox-desc">
+                        {lang === "zh"
+                          ? "启用后可对视频字幕进行多维度的智能分析"
+                          : "Enable AI-powered video analysis"}
+                      </span>
+                    </div>
                   </label>
                 </div>
                 {aiConfig.enabled && (
                   <>
                     <div className="form-group">
-                    <CustomSelect 
-                      label={t.aiApiProvider}
-                      value={aiConfig.provider}
-                      options={providers.map(p => ({ id: p.id, name: p.name }))}
-                      onChange={(val) => {
-                        const provider = providers.find((p) => p.id === val)
-                        setAiConfig({ ...aiConfig, provider: val as AIApiConfig["provider"], model: provider?.defaultModel || "" })
-                      }}
-                    />
+                      <CustomSelect
+                        label={t.aiApiProvider}
+                        value={aiConfig.provider}
+                        options={providers.map((p) => ({
+                          id: p.id,
+                          name: p.name
+                        }))}
+                        onChange={(val) => {
+                          const provider = providers.find((p) => p.id === val)
+                          setAiConfig({
+                            ...aiConfig,
+                            provider: val as AIApiConfig["provider"],
+                            model: provider?.defaultModel || ""
+                          })
+                        }}
+                      />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">{t.aiApiKey} <span style={{ color: "#ef4444" }}>*</span></label>
-                      <input type="password" className="form-input" value={aiConfig.apiKey} onChange={(e) => setAiConfig({ ...aiConfig, apiKey: e.target.value })} />
+                      <label className="form-label">
+                        {t.aiApiKey} <span style={{ color: "#ef4444" }}>*</span>
+                      </label>
+                      <input
+                        type="password"
+                        className="form-input"
+                        value={aiConfig.apiKey}
+                        onChange={(e) =>
+                          setAiConfig({ ...aiConfig, apiKey: e.target.value })
+                        }
+                      />
                     </div>
                     {aiConfig.provider === "custom" && (
                       <div className="form-group">
                         <label className="form-label">{t.aiApiBaseUrl}</label>
-                        <input type="text" className="form-input" value={aiConfig.baseUrl} onChange={(e) => setAiConfig({ ...aiConfig, baseUrl: e.target.value })} placeholder="https://api.your-provider.com/v1" />
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={aiConfig.baseUrl}
+                          onChange={(e) =>
+                            setAiConfig({
+                              ...aiConfig,
+                              baseUrl: e.target.value
+                            })
+                          }
+                          placeholder="https://api.your-provider.com/v1"
+                        />
                       </div>
                     )}
                     <div className="form-group">
                       <label className="form-label">{t.aiApiModel}</label>
-                      <input type="text" className="form-input" value={aiConfig.model} onChange={(e) => setAiConfig({ ...aiConfig, model: e.target.value })} placeholder="gpt-4o / deepseek-reasoner" />
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={aiConfig.model}
+                        onChange={(e) =>
+                          setAiConfig({ ...aiConfig, model: e.target.value })
+                        }
+                        placeholder="gpt-4o / deepseek-reasoner"
+                      />
                     </div>
                   </>
                 )}
@@ -681,20 +967,50 @@ function Options() {
             {activeTab === "about" && (
               <div className="about-card">
                 <img src={iconUrl} alt="Memflow Logo" className="brand-logo" />
-                <h3 style={{ fontSize: "28px", margin: "0 0 12px 0", fontFamily: "'Cinzel', serif" }}>MemFlow</h3>
-                <p style={{ color: "#888", marginBottom: "32px" }}>Extension v1.1.0 (PRO)</p>
-                <p style={{ lineHeight: "1.6", maxWidth: "400px", margin: "0 auto", color: "#aaa" }}>
-                  {lang === "zh" ? "记忆流动 - 打通 AI 平台与 Obsidian 的最后一公里。让每一个灵感都被妥善保存。" : "Bridge the gap between AI platforms and Obsidian. Make sure every spark of thought is preserved."}
+                <h3
+                  style={{
+                    fontSize: "28px",
+                    margin: "0 0 12px 0",
+                    fontFamily: "'Cinzel', serif"
+                  }}>
+                  MemFlow
+                </h3>
+                <p style={{ color: "#888", marginBottom: "32px" }}>
+                  Extension v1.1.0 (PRO)
+                </p>
+                <p
+                  style={{
+                    lineHeight: "1.6",
+                    maxWidth: "400px",
+                    margin: "0 auto",
+                    color: "#aaa"
+                  }}>
+                  {lang === "zh"
+                    ? "记忆流动 - 打通 AI 平台与 Obsidian 的最后一公里。让每一个灵感都被妥善保存。"
+                    : "Bridge the gap between AI platforms and Obsidian. Make sure every spark of thought is preserved."}
                 </p>
                 <div style={{ marginTop: "48px" }}>
-                  <a href="https://github.com/ET06731/Memflow" target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b", textDecoration: "none", fontSize: "14px" }}>View on GitHub →</a>
+                  <a
+                    href="https://github.com/ET06731/Memflow"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: "#f59e0b",
+                      textDecoration: "none",
+                      fontSize: "14px"
+                    }}>
+                    View on GitHub →
+                  </a>
                 </div>
               </div>
             )}
           </div>
-          
+
           <div className="save-bar">
-            <button className={`save-button ${saved ? "saved" : ""}`} onClick={saveConfig} disabled={!isValid}>
+            <button
+              className={`save-button ${saved ? "saved" : ""}`}
+              onClick={saveConfig}
+              disabled={!isValid}>
               {saved ? t.saved : t.saveConfig}
             </button>
           </div>

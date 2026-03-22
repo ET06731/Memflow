@@ -139,9 +139,11 @@ export const config: PlasmoCSConfig = {
 let currentAdapter = detectPlatformAdapter()
 console.log("[Memflow] 初始适配器:", currentAdapter?.platformName || "未检测到")
 
-
 // 如果是 B 站页面（视频或列表），立即安装字幕拦截器
-if (currentAdapter instanceof BiliBiliAdapter && (currentAdapter.isVideoPage() || currentAdapter.isListPage())) {
+if (
+  currentAdapter instanceof BiliBiliAdapter &&
+  (currentAdapter.isVideoPage() || currentAdapter.isListPage())
+) {
   currentAdapter.installSubtitleHook()
 }
 
@@ -163,7 +165,6 @@ function reDetectPlatform() {
 function isBiliBiliVideo(): boolean {
   return currentAdapter?.platformName === "Bilibili"
 }
-
 
 /**
  * 通用的最终导出逻辑
@@ -263,13 +264,18 @@ async function exportDirect() {
         let subtitles = ""
 
         // 读取关于字幕的配置
-        const { obsidianConfig: videoConfig } = await chrome.storage.sync.get("obsidianConfig")
+        const { obsidianConfig: videoConfig } =
+          await chrome.storage.sync.get("obsidianConfig")
 
         if (videoConfig?.saveSubtitles !== false) {
           showToast("正在获取字幕...", "warning")
           console.log("[Memflow Bilibili] 正在获取字幕...")
 
-          subtitles = await bilibiliAdapter.getSubtitles(!!videoConfig?.saveSubtitlesWithTimestamp)
+          const videoBaseUrl = window.location.href.split("?")[0]
+          subtitles = await bilibiliAdapter.getSubtitles(
+            !!videoConfig?.saveSubtitlesWithTimestamp,
+            videoBaseUrl
+          )
         } else {
           console.log("[Memflow Bilibili] 设置中禁用了保存字幕")
         }
@@ -374,24 +380,27 @@ async function exportBiliBiliSmart() {
     )
     if (!confirmed) return
 
-    showToast("正在获取字幕...", "warning")
+    showVideoProgress(1)
     console.log("[Memflow Bilibili] 开始智能导出...")
 
     // 3. 获取视频信息和字幕
     const bilibiliAdapter = currentAdapter as BiliBiliAdapter
     const videoInfo = bilibiliAdapter.getVideoInfo()
 
-    const { obsidianConfig: topConfig } = await chrome.storage.sync.get("obsidianConfig")
+    const { obsidianConfig: topConfig } =
+      await chrome.storage.sync.get("obsidianConfig")
     let subtitles = ""
 
     // 默认给 AI 发送的字幕不带时间戳也可以，但如果用户开启了时间戳并保存字幕，
     // 我们为了统一就把带时间戳的字幕发给 AI 并且保存。
     // 当然也可以获取两次分离，这里按最简单方式复用。
-    const withTimestamp = topConfig?.saveSubtitles !== false && !!topConfig?.saveSubtitlesWithTimestamp
+    const withTimestamp = topConfig?.saveSubtitlesWithTimestamp === true
+    const videoBaseUrl = window.location.href.split("?")[0]
 
-    subtitles = await bilibiliAdapter.getSubtitles(withTimestamp)
+    subtitles = await bilibiliAdapter.getSubtitles(withTimestamp, videoBaseUrl)
 
     if (!subtitles || subtitles.length === 0) {
+      hideVideoProgress()
       showToast(
         "❌ 未检测到字幕！请在视频播放器下方点击「字幕」或「AI 字幕」按钮开启控制后重试",
         "error"
@@ -404,11 +413,12 @@ async function exportBiliBiliSmart() {
 
     // 4. 检查 API 配置
     if (!aiApiConfig?.enabled || !aiApiConfig?.apiKey) {
+      hideVideoProgress()
       showToast("请在设置中配置 AI API", "error")
       return
     }
 
-    showToast("正在请求 AI 分析...", "warning")
+    showVideoProgress(2, "发送请求...")
 
     // 5. 使用真实 API 生成总结
     const aiConfig: AIApiConfig = {
@@ -496,7 +506,10 @@ status: 🟢 待整理
     const markdownContent = yaml + "\n\n" + content
 
     // 7. 导出
+    showVideoProgress(3)
+
     if (!chrome.runtime?.id || !chrome.storage) {
+      hideVideoProgress()
       downloadMarkdown(markdownContent, finalTitle)
       showToast("已导出为文件", "success")
       return
@@ -505,6 +518,7 @@ status: 🟢 待整理
     const { obsidianConfig } = await chrome.storage.sync.get("obsidianConfig")
 
     if (!obsidianConfig || !obsidianConfig.vaultName) {
+      hideVideoProgress()
       downloadMarkdown(markdownContent, finalTitle)
       showToast("请在扩展设置中配置 Obsidian", "warning")
       return
@@ -520,6 +534,7 @@ status: 🟢 待整理
         platform: "Bilibili",
         url: window.location.href
       })
+      hideVideoProgress()
       if (result.success) {
         showToast(result.message, "success")
       } else {
@@ -527,10 +542,12 @@ status: 🟢 待整理
         showToast("URI调用失败，已下载文件", "warning")
       }
     } else {
+      hideVideoProgress()
       downloadMarkdown(markdownContent, finalTitle)
       showToast("导出成功", "success")
     }
   } catch (error) {
+    hideVideoProgress()
     console.error("[Memflow Bilibili] 智能导出失败:", error)
     showToast(`智能导出失败: ${error.message}`, "error")
   }
@@ -614,13 +631,17 @@ async function exportSmart() {
 }
 
 function downloadMarkdown(content: string, filename: string) {
-  const safeFilename = Array.from(filename.replace(/[<>:"/\\|?*]/g, "-")).slice(0, 50).join("")
+  const safeFilename = Array.from(filename.replace(/[<>:"/\\|?*]/g, "-"))
+    .slice(0, 50)
+    .join("")
 
   // 使用 TextEncoder 构建安全可控的 UTF-8 字节流并手动压入 BOM 头，防止 Windows 解析错 Emoji
   const encoder = new TextEncoder()
   const contentBytes = encoder.encode(content)
-  const bomBytes = new Uint8Array([0xEF, 0xBB, 0xBF])
-  const blob = new Blob([bomBytes, contentBytes], { type: "text/markdown;charset=utf-8" })
+  const bomBytes = new Uint8Array([0xef, 0xbb, 0xbf])
+  const blob = new Blob([bomBytes, contentBytes], {
+    type: "text/markdown;charset=utf-8"
+  })
   const url = URL.createObjectURL(blob)
 
   const a = document.createElement("a")
@@ -823,10 +844,74 @@ function createToolbarButton() {
       }
     }
 
+    @keyframes memflow-toast-slide-out {
       to { 
         opacity: 0; 
         transform: translateX(20px);
       }
+    }
+
+    .memflow-progress-container {
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      z-index: 2147483647 !important;
+      background: rgba(10, 10, 15, 0.95) !important;
+      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+      border-radius: 12px !important;
+      padding: 24px 32px !important;
+      min-width: 320px !important;
+      backdrop-filter: blur(20px) !important;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5) !important;
+    }
+
+    .memflow-progress-title {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+      font-size: 15px !important;
+      font-weight: 600 !important;
+      color: #ffffff !important;
+      margin-bottom: 16px !important;
+      text-align: center !important;
+    }
+
+    .memflow-progress-steps {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 12px !important;
+    }
+
+    .memflow-progress-step {
+      display: flex !important;
+      align-items: center !important;
+      gap: 12px !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+      font-size: 13px !important;
+      color: rgba(255, 255, 255, 0.5) !important;
+      transition: all 0.3s ease !important;
+    }
+
+    .memflow-progress-step.active {
+      color: #ffffff !important;
+    }
+
+    .memflow-progress-step.completed {
+      color: #10b981 !important;
+    }
+
+    .memflow-progress-icon {
+      font-size: 16px !important;
+      width: 20px !important;
+      text-align: center !important;
+    }
+
+    .memflow-progress-icon.spinning {
+      animation: memflow-spin 1s linear infinite !important;
+    }
+
+    @keyframes memflow-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
 
   `
@@ -994,7 +1079,7 @@ function findToolbarLocation(): HTMLElement | null {
                       ? "(Gemini)"
                       : "(最后一个)"
               )
-                ; (targetBtn as any).__memflowShareButton = targetBtn
+              ;(targetBtn as any).__memflowShareButton = targetBtn
               return targetBtn as HTMLElement
             }
           }
@@ -1148,8 +1233,69 @@ function showToast(
   }, 3000)
 }
 
+function showVideoProgress(step: 1 | 2 | 3, extraMessage?: string) {
+  console.log("[Memflow] 进度: 步骤", step)
+
+  const stepMessages = [
+    "📥 提取字幕中...",
+    "🤖 AI 分析中..." + (extraMessage ? ` ${extraMessage}` : ""),
+    "💾 导出文件中..."
+  ]
+
+  const currentMessage = stepMessages[step - 1] || `步骤 ${step}`
+
+  showToast(currentMessage, "warning")
+}
+
+function hideVideoProgress() {}
+
+function injectStyles() {
+  if (document.getElementById("memflow-styles")) return
+
+  const style = document.createElement("style")
+  style.id = "memflow-styles"
+  style.textContent = `
+    .memflow-toast {
+      position: fixed !important;
+      top: 24px !important;
+      right: 24px !important;
+      padding: 14px 20px !important;
+      background: rgba(10, 10, 15, 0.95) !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      border-radius: 8px !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+      font-size: 13px !important;
+      font-weight: 500 !important;
+      color: #e5e5e5 !important;
+      z-index: 2147483647 !important;
+      max-width: 360px !important;
+      line-height: 1.5 !important;
+      backdrop-filter: blur(20px) !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+      animation: memflow-toast-slide-in 0.3s ease-out !important;
+    }
+
+    @keyframes memflow-toast-slide-in {
+      from { opacity: 0; transform: translateX(20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes memflow-toast-slide-out {
+      to { opacity: 0; transform: translateX(20px); }
+    }
+
+    .memflow-toast-success { border-left: 3px solid #10b981 !important; }
+    .memflow-toast-error { border-left: 3px solid #ef4444 !important; }
+    .memflow-toast-warning { border-left: 3px solid #f59e0b !important; }
+  `
+  document.head.appendChild(style)
+  console.log("[Memflow] CSS 样式已注入")
+}
+
 function initMemflow() {
   console.log("[Memflow] 初始化开始...")
+
+  injectStyles()
 
   // B 站视频页面不创建工具栏按钮，只通过 popup 触发导出
   if (isBiliBiliVideo()) {
@@ -1291,5 +1437,4 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
     sendResponse({ success: true })
     return true
   }
-
 })

@@ -93,7 +93,7 @@ export class BiliBiliAdapter extends BaseAdapter {
       "**收藏**: " + videoInfo.favorites,
       "",
       "**标签**: " +
-      (videoInfo.tags.length > 0 ? videoInfo.tags.join(", ") : "无"),
+        (videoInfo.tags.length > 0 ? videoInfo.tags.join(", ") : "无"),
       "",
       "---",
       "",
@@ -487,8 +487,8 @@ export class BiliBiliAdapter extends BaseAdapter {
    */
   installSubtitleHook(): void {
     if ((window as any).__memflowSubtitleHookInstalled) return
-      ; (window as any).__memflowSubtitleHookInstalled = true
-      ; (window as any).__memflowSubtitleCache = null
+    ;(window as any).__memflowSubtitleHookInstalled = true
+    ;(window as any).__memflowSubtitleCache = null
 
     const store = window as any
 
@@ -519,40 +519,65 @@ export class BiliBiliAdapter extends BaseAdapter {
 
     // 拦截 XHR
     const OrigXHR = window.XMLHttpRequest
-      ; (window as any).XMLHttpRequest = function () {
-        const xhr = new OrigXHR()
-        let capturedUrl = ""
+    ;(window as any).XMLHttpRequest = function () {
+      const xhr = new OrigXHR()
+      let capturedUrl = ""
 
-        const origOpen = xhr.open.bind(xhr)
-          ; (xhr as any).open = function (method: string, url: string, async?: boolean, user?: string, password?: string) {
-            capturedUrl = url
-            return origOpen(method, url, async, user, password)
-          }
+      const origOpen = xhr.open.bind(xhr)
+      ;(xhr as any).open = function (
+        method: string,
+        url: string,
+        async?: boolean,
+        user?: string,
+        password?: string
+      ) {
+        capturedUrl = url
+        return origOpen(method, url, async, user, password)
+      }
 
-        const origSend = xhr.send.bind(xhr)
-          ; (xhr as any).send = function (body?: Document | XMLHttpRequestBodyInit | null) {
-            if (capturedUrl && (capturedUrl.includes("/bfs/subtitle/") || capturedUrl.includes("/bfs/ai_subtitle/"))) {
-              xhr.addEventListener("load", () => {
-                try {
-                  const json = JSON.parse(xhr.responseText)
-                  if (json?.body?.length > 0 && !store.__memflowSubtitleCache) {
-                    console.log("[Memflow Bilibili Hook] XHR 拦截字幕:", capturedUrl)
-                    store.__memflowSubtitleCache = json.body
-                  }
-                } catch (e) { /* ignore */ }
-              })
+      const origSend = xhr.send.bind(xhr)
+      ;(xhr as any).send = function (
+        body?: Document | XMLHttpRequestBodyInit | null
+      ) {
+        if (
+          capturedUrl &&
+          (capturedUrl.includes("/bfs/subtitle/") ||
+            capturedUrl.includes("/bfs/ai_subtitle/"))
+        ) {
+          xhr.addEventListener("load", () => {
+            try {
+              const json = JSON.parse(xhr.responseText)
+              if (json?.body?.length > 0 && !store.__memflowSubtitleCache) {
+                console.log(
+                  "[Memflow Bilibili Hook] XHR 拦截字幕:",
+                  capturedUrl
+                )
+                store.__memflowSubtitleCache = json.body
+              }
+            } catch (e) {
+              /* ignore */
             }
-            return origSend(body)
-          }
+          })
+        }
+        return origSend(body)
+      }
 
-        return xhr
-      } as any
+      return xhr
+    } as any
 
     const origFetch = window.fetch.bind(window)
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : (input as Request).url
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : (input as Request).url
       const res = await origFetch(input, init)
-      if (url && (url.includes("/bfs/subtitle/") || url.includes("/bfs/ai_subtitle/"))) {
+      if (
+        url &&
+        (url.includes("/bfs/subtitle/") || url.includes("/bfs/ai_subtitle/"))
+      ) {
         try {
           const clone = res.clone()
           const json = await clone.json()
@@ -560,7 +585,9 @@ export class BiliBiliAdapter extends BaseAdapter {
             console.log("[Memflow Bilibili Hook] fetch 拦截字幕:", url)
             store.__memflowSubtitleCache = json.body
           }
-        } catch (e) { /* ignore */ }
+        } catch (e) {
+          /* ignore */
+        }
       }
       return res
     }
@@ -578,15 +605,32 @@ export class BiliBiliAdapter extends BaseAdapter {
   }
 
   /**
-   * 将字幕数组格式化为字符串
+   * 将秒数转换为带链接的时间戳格式: [mm:ss](url?t=seconds)
+   * B站支持 ?t=秒数 参数直接跳转到指定时间
    */
-  private formatSubtitleArray(body: any[], withTimestamp: boolean): string {
+  private formatTimestampWithLink(seconds: number, videoUrl: string): string {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    const timeStr = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+    const timestampUrl = `${videoUrl}?t=${seconds}`
+    return `[${timeStr}](${timestampUrl})`
+  }
+
+  private formatSubtitleArray(
+    body: any[],
+    withTimestamp: boolean,
+    videoUrl?: string
+  ): string {
     if (!body || !body.length) return ""
+
     return body
       .map((item: any) => {
         const text = item.content || ""
         if (!text) return ""
         if (withTimestamp && typeof item.from === "number") {
+          if (videoUrl) {
+            return `${this.formatTimestampWithLink(item.from, videoUrl)} ${text}`
+          }
           return `${this.formatTimestamp(item.from)} ${text}`
         }
         return text
@@ -595,17 +639,17 @@ export class BiliBiliAdapter extends BaseAdapter {
       .join("\n")
   }
 
-  /**
-   * 获取字幕内容（A+B 双保险）
-   */
-  async getSubtitles(withTimestamp: boolean = false): Promise<string> {
-    console.log("[Memflow Bilibili] 开始获取字幕... 是否包含时间戳:", withTimestamp)
-
-    // 方案 A：优先读取 hook 缓存（页面自身加载字幕时已拦截）
+  async getSubtitles(
+    withTimestamp: boolean = false,
+    videoUrl?: string
+  ): Promise<string> {
     const cached = (window as any).__memflowSubtitleCache
     if (cached && Array.isArray(cached) && cached.length > 0) {
-      console.log("[Memflow Bilibili] 方案A: 从 hook 缓存获取字幕，条数:", cached.length)
-      return this.formatSubtitleArray(cached, withTimestamp)
+      console.log(
+        "[Memflow Bilibili] 方案A: 从 hook 缓存获取字幕，条数:",
+        cached.length
+      )
+      return this.formatSubtitleArray(cached, withTimestamp, videoUrl)
     }
 
     console.log("[Memflow Bilibili] 方案A 未命中，尝试方案 B...")
@@ -619,8 +663,13 @@ export class BiliBiliAdapter extends BaseAdapter {
     // 如果无法直接获取到 aid / cid，但有 bvid (例如在 watchlater 列表页)，通过 API 兑换
     if ((!aid || !cid) && bvid) {
       try {
-        console.log("[Memflow Bilibili] 缺少 aid/cid，尝试通过 bvid 获取:", bvid)
-        const infoRes = await fetch(`https://api.bilibili.com/x/web-interface/view?bvid=${bvid}`)
+        console.log(
+          "[Memflow Bilibili] 缺少 aid/cid，尝试通过 bvid 获取:",
+          bvid
+        )
+        const infoRes = await fetch(
+          `https://api.bilibili.com/x/web-interface/view?bvid=${bvid}`
+        )
         const infoData = await infoRes.json()
         if (infoData?.data?.aid && infoData?.data?.cid) {
           aid = String(infoData.data.aid)
@@ -632,8 +681,18 @@ export class BiliBiliAdapter extends BaseAdapter {
     }
 
     if (aid && cid) {
-      console.log("[Memflow Bilibili] 方案B: 尝试 wbi API, aid=", aid, "cid=", cid)
-      const result = await this.fetchSubtitlesFromApi(aid, cid, withTimestamp)
+      console.log(
+        "[Memflow Bilibili] 方案B: 尝试 wbi API, aid=",
+        aid,
+        "cid=",
+        cid
+      )
+      const result = await this.fetchSubtitlesFromApi(
+        aid,
+        cid,
+        withTimestamp,
+        videoUrl
+      )
       if (result) return result
     } else {
       console.warn("[Memflow Bilibili] 方案B: 无法获取 aid/cid")
@@ -660,7 +719,7 @@ export class BiliBiliAdapter extends BaseAdapter {
       }
 
       console.log("[Memflow Bilibili] 找到 AI 小助手按钮，点击...")
-        ; (aiAssistantBtn as HTMLElement).click()
+      ;(aiAssistantBtn as HTMLElement).click()
 
       // 等待 AI 面板加载
       setTimeout(() => {
@@ -674,7 +733,7 @@ export class BiliBiliAdapter extends BaseAdapter {
         }
 
         console.log("[Memflow Bilibili] 找到字幕列表按钮，点击...")
-          ; (subtitleListBtn as HTMLElement).click()
+        ;(subtitleListBtn as HTMLElement).click()
 
         // 等待字幕加载
         setTimeout(() => {
@@ -840,18 +899,24 @@ export class BiliBiliAdapter extends BaseAdapter {
   /**
    * 从 URL 获取字幕（方案 A 从 hook 缓存拿到 URL 后调用）
    */
-  private async fetchSubtitle(url: string, withTimestamp: boolean): Promise<string> {
+  private async fetchSubtitle(
+    url: string,
+    withTimestamp: boolean,
+    videoUrl?: string
+  ): Promise<string> {
     try {
       const fullUrl = url.startsWith("http") ? url : `https:${url}`
       console.log("[Memflow Bilibili] 获取字幕 URL:", fullUrl)
 
-      // 注意：从 API 返回的字幕 CDN URL (如 aisubtitle.hdslb.com) 使用的是 auth_key 签名
-      // 如果携带 credentials: "include"，会因为该 CDN 返回了 Access-Control-Allow-Origin: * 而导致严格的 CORS 报错截断
       const response = await fetch(fullUrl)
       const data = await response.json()
 
       if (data.body && data.body.length > 0) {
-        const text = this.formatSubtitleArray(data.body, withTimestamp)
+        const text = this.formatSubtitleArray(
+          data.body,
+          withTimestamp,
+          videoUrl
+        )
         console.log("[Memflow Bilibili] 字幕获取成功，文本长度:", text.length)
         return text
       }
@@ -861,11 +926,12 @@ export class BiliBiliAdapter extends BaseAdapter {
     return ""
   }
 
-  /**
-   * 方案 B：带 Cookie 调用 wbi/v2 API 获取字幕列表
-   */
-  private async fetchSubtitlesFromApi(aid: string, cid: string, withTimestamp: boolean): Promise<string> {
-    // 优先尝试 wbi/v2（新接口，需登录 Cookie）
+  private async fetchSubtitlesFromApi(
+    aid: string,
+    cid: string,
+    withTimestamp: boolean,
+    videoUrl?: string
+  ): Promise<string> {
     const apisToTry = [
       `https://api.bilibili.com/x/player/wbi/v2?cid=${cid}&aid=${aid}`,
       `https://api.bilibili.com/x/player/v2?cid=${cid}&aid=${aid}`
@@ -875,9 +941,9 @@ export class BiliBiliAdapter extends BaseAdapter {
       try {
         console.log("[Memflow Bilibili] 方案B API:", url)
         const response = await fetch(url, {
-          credentials: "include",   // 关键！携带登录 Cookie
+          credentials: "include",
           headers: {
-            "Referer": "https://www.bilibili.com",
+            Referer: "https://www.bilibili.com",
             "User-Agent": navigator.userAgent
           }
         })
@@ -895,17 +961,25 @@ export class BiliBiliAdapter extends BaseAdapter {
           continue
         }
 
-        console.log("[Memflow Bilibili] API 返回字幕列表:", subtitleList.map((s: any) => s.lan_doc || s.lang))
+        console.log(
+          "[Memflow Bilibili] API 返回字幕列表:",
+          subtitleList.map((s: any) => s.lan_doc || s.lang)
+        )
 
-        // 优先中文字幕
-        const preferred = subtitleList.find((s: any) =>
-          s.lang === "zh-CN" || s.lang === "zh" || s.lang === "ai-zh" ||
-          s.lan === "zh-CN" || s.lan === "zh" || s.lan === "ai-zh"
-        ) || subtitleList[0]
+        const preferred =
+          subtitleList.find(
+            (s: any) =>
+              s.lang === "zh-CN" ||
+              s.lang === "zh" ||
+              s.lang === "ai-zh" ||
+              s.lan === "zh-CN" ||
+              s.lan === "zh" ||
+              s.lan === "ai-zh"
+          ) || subtitleList[0]
 
         const subtitleUrl = preferred?.subtitle_url || preferred?.url
         if (subtitleUrl) {
-          return await this.fetchSubtitle(subtitleUrl, withTimestamp)
+          return await this.fetchSubtitle(subtitleUrl, withTimestamp, videoUrl)
         }
       } catch (error) {
         console.error("[Memflow Bilibili] API 请求失败:", url, error)
