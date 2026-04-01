@@ -35,13 +35,21 @@
       "inputBox": "textarea[placeholder*='询问'], textarea[placeholder*='Ask'], div[contenteditable='true'][role='textbox']",
       "sendButton": "button[aria-label*='发送'], button[aria-label*='Send'], button[class*='send-button']"
     },
-    "doubao": {
+"doubao": {
       "messageContainer": "div[data-testid='message_text_content'].container-QQkdo4, div.flow-markdown-body[data-testid='message_text_content'], div[data-testid='message_content'], div[data-testid='message_text_content'].container-P2rR72",
       "userMessage": "div[data-testid='message_text_content'].container-QQkdo4",
       "aiMessage": "div.flow-markdown-body[data-testid='message_text_content'], div[data-testid='message_text_content'].container-P2rR72, div[data-testid='message_content']",
       "codeBlock": "pre code, [class*='code-block'] code, .markdown-body pre",
       "inputBox": "textarea[placeholder*='输入'], textarea[placeholder*='发送'], div[class*='input'] textarea, div[contenteditable='true']",
       "sendButton": "button[type='submit'], button[class*='send'], button[aria-label*='发送']"
+    },
+    "smartclip": {
+      "messageContainer": "article, main, [role='main'], .content, #content, .post-content, .article-content, .entry-content",
+      "userMessage": "",
+      "aiMessage": "",
+      "codeBlock": "pre code, .code-block code",
+      "inputBox": "",
+      "sendButton": ""
     }
   }
 }

@@ -4,7 +4,7 @@ import { ObsidianURIHandler } from "../obsidian/uri-handler"
 import { createMarkdownBuilder, createMetadataGenerator } from "../processing"
 import { AIService } from "../services/ai-api"
 import type { AIApiConfig, Conversation } from "../types"
-import { BiliBiliAdapter, detectPlatformAdapter } from "./adapters"
+import { BiliBiliAdapter, detectPlatformAdapter, detectSmartClipAdapter, SmartClipAdapter } from "./adapters"
 
 /**
  * 构建 B 站视频的 Markdown 内容
@@ -132,11 +132,16 @@ export const config: PlasmoCSConfig = {
     "https://bilibili.com/list/watchlater*",
     // B站其他列表页
     "https://www.bilibili.com/list/*",
-    "https://bilibili.com/list/*"
+    "https://bilibili.com/list/*",
+    // SmartClip: 通用网页剪藏 - 所有HTTP/HTTPS页面
+    "<all_urls>"
   ]
 }
 
 let currentAdapter = detectPlatformAdapter()
+if (!currentAdapter) {
+  currentAdapter = detectSmartClipAdapter()
+}
 console.log("[Memflow] 初始适配器:", currentAdapter?.platformName || "未检测到")
 
 // 如果是 B 站页面（视频或列表），立即安装字幕拦截器
@@ -164,6 +169,164 @@ function reDetectPlatform() {
  */
 function isBiliBiliVideo(): boolean {
   return currentAdapter?.platformName === "Bilibili"
+}
+
+function isSmartClip(): boolean {
+  return currentAdapter instanceof SmartClipAdapter
+}
+
+/**
+ * SmartClip 通用网页直接导出
+ */
+async function exportSmartClipDirect() {
+  try {
+    if (!(currentAdapter instanceof SmartClipAdapter)) {
+      showToast("当前页面不是通用网页", "error")
+      return
+    }
+
+    const smartClipAdapter = currentAdapter as SmartClipAdapter
+
+    console.log("[Memflow SmartClip] 开始提取网页内容...")
+    showToast("正在提取网页内容...", "warning")
+
+    // 1. 提取网页内容
+    const conversation = smartClipAdapter.extractConversation()
+    const metadata = smartClipAdapter.getMetadata()
+
+    if (!conversation.messages.length) {
+      showToast("未找到网页内容", "warning")
+      return
+    }
+
+    console.log(`[Memflow SmartClip] 提取到内容，长度: ${conversation.messages[0]?.content.length || 0}`)
+
+    // 2. 生成本地元数据
+    const metadataGen = createMetadataGenerator()
+    const localMetadata = metadataGen.generateLocal(conversation)
+
+    // 3. 构建 Markdown 内容
+    const date = new Date().toISOString().split("T")[0]
+    const tags = ["SmartClip", ...localMetadata.keywords].filter((t) => t).join(", ")
+
+    const yaml = `---
+created: ${date}
+source: [[网页剪藏]]
+original_url: "${window.location.href}"
+tags: [${tags}]
+category: ${localMetadata.category}
+status: 🟢 待整理
+---`
+
+    let content = ""
+
+    // 标题
+    content += `# ${metadata.title || localMetadata.title}\n\n`
+
+    // 元数据信息
+    content += `---\n\n`
+    content += `## 📋 网页信息\n\n`
+    if (metadata.author) {
+      content += `- **作者**: ${metadata.author}\n`
+    }
+    if (metadata.siteName) {
+      content += `- **来源网站**: ${metadata.siteName}\n`
+    }
+    if (metadata.publishDate) {
+      content += `- **发布时间**: ${metadata.publishDate}\n`
+    }
+    if (metadata.description) {
+      content += `- **原文描述**: ${metadata.description}\n`
+    }
+
+    // 封面图
+    if (metadata.coverImage) {
+      content += `\n![cover](${metadata.coverImage})\n`
+    }
+
+    // 本地摘要
+    content += `---\n\n`
+    content += `## 📝 摘要\n\n`
+    content += `${localMetadata.summary}\n\n`
+
+    // 关键词
+    content += `---\n\n`
+    content += `## 🏷️ 关键词\n\n`
+    content += localMetadata.keywords.join(", ") + "\n\n"
+
+    // 高亮内容
+    const highlights = currentAdapter instanceof SmartClipAdapter 
+      ? (currentAdapter as SmartClipAdapter).getHighlights() 
+      : []
+    
+    if (highlights.length > 0) {
+      content += `---\n\n`
+      content += `## ⭐ 高亮内容\n\n`
+      highlights.forEach((h, i) => {
+        content += `${i + 1}. ${h.text}\n`
+      })
+      content += "\n"
+    }
+
+    // 网页正文
+    content += `---\n\n`
+    content += `## 📄 网页正文\n\n`
+
+    // 限制内容长度
+    const rawContent = conversation.messages[0]?.content || ""
+    const truncatedContent =
+      rawContent.length > 50000
+        ? rawContent.slice(0, 50000) + "\n\n...（内容过长，已截断）"
+        : rawContent
+    content += truncatedContent + "\n"
+
+    // 底部信息
+    content += `---\n\n`
+    content += `## 📎 相关信息\n\n`
+    content += `- **原文链接**: ${window.location.href}\n`
+    content += `- **剪藏时间**: ${new Date().toLocaleString("zh-CN")}\n`
+
+    const markdownContent = yaml + "\n\n" + content
+
+    // 4. 导出
+    if (!chrome.runtime?.id || !chrome.storage) {
+      downloadMarkdown(markdownContent, localMetadata.title)
+      showToast("已导出为文件", "success")
+      return
+    }
+
+    const { obsidianConfig } = await chrome.storage.sync.get("obsidianConfig")
+
+    if (!obsidianConfig || !obsidianConfig.vaultName) {
+      downloadMarkdown(markdownContent, localMetadata.title)
+      showToast("请在扩展设置中配置 Obsidian", "warning")
+      return
+    }
+
+    if (obsidianConfig.exportMethod === "uri") {
+      const handler = new ObsidianURIHandler(obsidianConfig)
+      const result = await handler.exportToObsidian(markdownContent, {
+        title: localMetadata.title,
+        summary: localMetadata.summary,
+        keywords: localMetadata.keywords,
+        category: localMetadata.category,
+        platform: "SmartClip",
+        url: window.location.href
+      })
+      if (result.success) {
+        showToast(result.message, "success")
+      } else {
+        downloadMarkdown(markdownContent, localMetadata.title)
+        showToast("URI调用失败，已下载文件", "warning")
+      }
+    } else {
+      downloadMarkdown(markdownContent, localMetadata.title)
+      showToast("导出成功", "success")
+    }
+  } catch (error) {
+    console.error("[Memflow SmartClip] 导出失败:", error)
+    showToast(`导出失败: ${error.message}`, "error")
+  }
 }
 
 /**
@@ -343,6 +506,12 @@ async function exportDirect() {
         }
         return
       }
+    }
+
+    // SmartClip 通用网页导出
+    if (currentAdapter instanceof SmartClipAdapter) {
+      await exportSmartClipDirect()
+      return
     }
 
     // 非 B 站平台的原有逻辑
@@ -553,10 +722,192 @@ status: 🟢 待整理
   }
 }
 
+async function exportSmartClipSmart() {
+  try {
+    if (!(currentAdapter instanceof SmartClipAdapter)) {
+      showToast("当前页面不是通用网页", "error")
+      return
+    }
+
+    const smartClipAdapter = currentAdapter as SmartClipAdapter
+
+    // 1. 确认提示
+    const confirmed = window.confirm(
+      "🤖 SmartClip 智能剪藏\n\n插件将使用 AI 智能分析当前网页，生成结构化摘要、提取关键信息并进行分类。\n\n是否继续？"
+    )
+    if (!confirmed) return
+
+    showToast("正在提取网页内容...", "warning")
+    console.log("[Memflow SmartClip] 开始智能分析...")
+
+    // 2. 提取网页内容
+    const conversation = smartClipAdapter.extractConversation()
+    const metadata = smartClipAdapter.getMetadata()
+
+    if (!conversation.messages.length) {
+      showToast("未找到网页内容", "warning")
+      return
+    }
+
+    // 3. 检查 API 配置
+    const { aiApiConfig } = await chrome.storage.sync.get("aiApiConfig")
+    if (!aiApiConfig?.enabled || !aiApiConfig?.apiKey) {
+      showToast("请在设置中配置 AI API", "error")
+      return
+    }
+
+    showToast("AI 分析中...", "warning")
+
+    // 4. 使用 AI 生成元数据
+    const aiConfig: AIApiConfig = {
+      enabled: aiApiConfig.enabled,
+      provider: aiApiConfig.provider || "deepseek",
+      apiKey: aiApiConfig.apiKey,
+      baseUrl: aiApiConfig.baseUrl || "",
+      model: aiApiConfig.model || ""
+    }
+
+    const metadataGen = createMetadataGenerator()
+    const aiMetadata = await metadataGen.generateWithAI(conversation, currentAdapter)
+
+    console.log("[Memflow SmartClip] AI 元数据生成完成:", aiMetadata)
+
+    // 5. 构建 Markdown 内容
+    const date = new Date().toISOString().split("T")[0]
+    const tags = ["SmartClip", ...aiMetadata.keywords].filter((t) => t).join(", ")
+
+    const yaml = `---
+created: ${date}
+source: [[网页剪藏]]
+original_url: "${window.location.href}"
+tags: [${tags}]
+category: ${aiMetadata.category}
+status: 🟢 待整理
+---`
+
+    let content = ""
+
+    // 标题
+    content += `# ${aiMetadata.title}\n\n`
+    content += `> 🤖 由 SmartClip AI 智能剪藏\n\n`
+
+    // 元数据信息
+    content += `---\n\n`
+    content += `## 📋 网页信息\n\n`
+    if (metadata.author) {
+      content += `- **作者**: ${metadata.author}\n`
+    }
+    if (metadata.siteName) {
+      content += `- **来源网站**: ${metadata.siteName}\n`
+    }
+    if (metadata.publishDate) {
+      content += `- **发布时间**: ${metadata.publishDate}\n`
+    }
+    if (metadata.description) {
+      content += `- **原文描述**: ${metadata.description}\n`
+    }
+
+    // 封面图
+    if (metadata.coverImage) {
+      content += `\n![cover](${metadata.coverImage})\n`
+    }
+
+    // AI 摘要
+    content += `---\n\n`
+    content += `## 💡 AI 摘要\n\n`
+    content += `${aiMetadata.summary}\n\n`
+
+    // 关键词
+    content += `---\n\n`
+    content += `## 🏷️ 关键词\n\n`
+    content += aiMetadata.keywords.join(", ") + "\n\n"
+
+    // 高亮内容
+    const aiHighlights = currentAdapter instanceof SmartClipAdapter 
+      ? (currentAdapter as SmartClipAdapter).getHighlights() 
+      : []
+    
+    if (aiHighlights.length > 0) {
+      content += `---\n\n`
+      content += `## ⭐ 高亮内容\n\n`
+      aiHighlights.forEach((h, i) => {
+        content += `${i + 1}. ${h.text}\n`
+      })
+      content += "\n"
+    }
+
+    // 网页正文
+    content += `---\n\n`
+    content += `## 📄 网页正文\n\n`
+
+    // 限制内容长度
+    const rawContent = conversation.messages[0]?.content || ""
+    const truncatedContent =
+      rawContent.length > 50000
+        ? rawContent.slice(0, 50000) + "\n\n...（内容过长，已截断）"
+        : rawContent
+    content += truncatedContent + "\n"
+
+    // 底部信息
+    content += `---\n\n`
+    content += `## 📎 相关信息\n\n`
+    content += `- **原文链接**: ${window.location.href}\n`
+    content += `- **剪藏时间**: ${new Date().toLocaleString("zh-CN")}\n`
+
+    const markdownContent = yaml + "\n\n" + content
+
+    // 6. 导出
+    showToast("正在保存...", "warning")
+
+    if (!chrome.runtime?.id || !chrome.storage) {
+      downloadMarkdown(markdownContent, aiMetadata.title)
+      showToast("已导出为文件", "success")
+      return
+    }
+
+    const { obsidianConfig } = await chrome.storage.sync.get("obsidianConfig")
+
+    if (!obsidianConfig || !obsidianConfig.vaultName) {
+      downloadMarkdown(markdownContent, aiMetadata.title)
+      showToast("请在扩展设置中配置 Obsidian", "warning")
+      return
+    }
+
+    if (obsidianConfig.exportMethod === "uri") {
+      const handler = new ObsidianURIHandler(obsidianConfig)
+      const result = await handler.exportToObsidian(markdownContent, {
+        title: aiMetadata.title,
+        summary: aiMetadata.summary,
+        keywords: aiMetadata.keywords,
+        category: aiMetadata.category,
+        platform: "SmartClip",
+        url: window.location.href
+      })
+      if (result.success) {
+        showToast(result.message, "success")
+      } else {
+        downloadMarkdown(markdownContent, aiMetadata.title)
+        showToast("URI调用失败，已下载文件", "warning")
+      }
+    } else {
+      downloadMarkdown(markdownContent, aiMetadata.title)
+      showToast("导出成功", "success")
+    }
+  } catch (error) {
+    console.error("[Memflow SmartClip] 智能导出失败:", error)
+    showToast(`智能导出失败: ${error.message}`, "error")
+  }
+}
+
 async function exportSmart() {
   try {
     if (!currentAdapter) {
       showToast("当前页面不支持导出", "error")
+      return
+    }
+
+    if (currentAdapter instanceof SmartClipAdapter) {
+      await exportSmartClipSmart()
       return
     }
 
@@ -948,6 +1299,11 @@ function createToolbarButton() {
       button.classList.remove("exporting")
     }
   })
+
+  // 初始化高亮功能（仅在 SmartClip 页面）
+  if (isSmartClip()) {
+    initHighlightFeature()
+  }
 
   // 更新 Tooltip 提示
   button.title = "左键: 直接导出 | 右键/Shift+左键: 智能导出 (AI生成标题摘要)"
@@ -1438,3 +1794,336 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
     return true
   }
 })
+
+function initHighlightFeature() {
+  console.log("[SmartClip] 初始化高亮功能...")
+  
+  // 监听文本选择
+  document.addEventListener("mouseup", handleTextSelection)
+  
+  // 点击高亮区域显示操作菜单
+  document.addEventListener("click", handleHighlightClick)
+  
+  // 键盘快捷键 Ctrl+Shift+H 添加高亮
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key === "H") {
+      e.preventDefault()
+      const selection = window.getSelection()
+      if (selection && selection.toString().trim()) {
+        createHighlightPopup(selection.toString().trim())
+      }
+    }
+  })
+  
+  // 恢复之前的高亮显示
+  if (currentAdapter instanceof SmartClipAdapter) {
+    (currentAdapter as SmartClipAdapter).renderHighlightsOnPage()
+  }
+}
+
+let highlightPopup: HTMLElement | null = null
+let highlightActionPopup: HTMLElement | null = null
+
+function handleTextSelection() {
+  const selection = window.getSelection()
+  if (!selection || !selection.toString().trim()) {
+    if (highlightPopup) {
+      highlightPopup.remove()
+      highlightPopup = null
+    }
+    return
+  }
+  
+  const selectedText = selection.toString().trim()
+  if (selectedText.length < 2) return
+  
+  // 显示高亮按钮
+  setTimeout(() => {
+    const range = selection.getRangeAt(0)
+    if (range.collapsed) return
+    
+    const rect = range.getBoundingClientRect()
+    showHighlightButton(rect, selectedText)
+  }, 100)
+}
+
+function handleHighlightClick(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  const highlightEl = target.closest("[data-highlight-id]")
+  
+  if (highlightEl && currentAdapter instanceof SmartClipAdapter) {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const highlightId = (highlightEl as HTMLElement).dataset.highlightId
+    if (highlightId) {
+      showHighlightActionMenu(highlightEl as HTMLElement, highlightId)
+    }
+    return
+  }
+  
+  // 点击其他地方关闭菜单
+  if (highlightActionPopup) {
+    highlightActionPopup.remove()
+    highlightActionPopup = null
+  }
+}
+
+function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
+  if (highlightActionPopup) {
+    highlightActionPopup.remove()
+  }
+  
+  const rect = el.getBoundingClientRect()
+  
+  highlightActionPopup = document.createElement("div")
+  highlightActionPopup.id = "memflow-highlight-action"
+  highlightActionPopup.style.cssText = `
+    position: fixed;
+    top: ${rect.bottom + 8}px;
+    left: ${rect.left}px;
+    z-index: 2147483647;
+    display: flex;
+    gap: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    padding: 6px 10px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  `
+  
+  // 删除按钮
+  const deleteBtn = document.createElement("button")
+  deleteBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>`
+  deleteBtn.style.cssText = `
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  `
+  deleteBtn.onmouseover = () => deleteBtn.style.background = "rgba(255,255,255,0.2)"
+  deleteBtn.onmouseout = () => deleteBtn.style.background = "transparent"
+  deleteBtn.onclick = (e) => {
+    e.stopPropagation()
+    deleteHighlight(highlightId, el)
+    highlightActionPopup?.remove()
+    highlightActionPopup = null
+  }
+  
+  // 想法按钮
+  const noteBtn = document.createElement("button")
+  noteBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`
+  noteBtn.style.cssText = `
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  `
+  noteBtn.onmouseover = () => noteBtn.style.background = "rgba(255,255,255,0.2)"
+  noteBtn.onmouseout = () => noteBtn.style.background = "transparent"
+  noteBtn.onclick = (e) => {
+    e.stopPropagation()
+    addNoteToHighlight(highlightId)
+    highlightActionPopup?.remove()
+    highlightActionPopup = null
+  }
+  
+  // 颜色选择器
+  const colors = ["#fef08a", "#86efac", "#60a5fa", "#f472b6"]
+  colors.forEach(c => {
+    const colorBtn = document.createElement("button")
+    colorBtn.style.cssText = `
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: ${c};
+      border: 2px solid rgba(255,255,255,0.8);
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    `
+    colorBtn.onclick = (e) => {
+      e.stopPropagation()
+      changeHighlightColor(highlightId, el, c)
+      highlightActionPopup?.remove()
+      highlightActionPopup = null
+    }
+    highlightActionPopup.appendChild(colorBtn)
+  })
+  
+  highlightActionPopup.appendChild(deleteBtn)
+  highlightActionPopup.appendChild(noteBtn)
+  document.body.appendChild(highlightActionPopup)
+}
+
+function deleteHighlight(id: string, el: HTMLElement) {
+  if (currentAdapter instanceof SmartClipAdapter) {
+    (currentAdapter as SmartClipAdapter).removeHighlight(id)
+    // 移除高亮样式
+    el.style.backgroundColor = ""
+    delete el.dataset.highlightId
+    showToast("已删除高亮", "success")
+  }
+}
+
+function changeHighlightColor(id: string, el: HTMLElement, color: string) {
+  const colorMap: Record<string, string> = {
+    "#fef08a": "rgba(255,255,0,0.4)",
+    "#86efac": "rgba(0,255,0,0.3)",
+    "#60a5fa": "rgba(0,0,255,0.2)",
+    "#f472b6": "rgba(255,192,203,0.4)"
+  }
+  el.style.backgroundColor = colorMap[color] || colorMap["#fef08a"]
+  showToast("已更改颜色", "success")
+}
+
+function addNoteToHighlight(id: string) {
+  const note = window.prompt("添加想法/笔记：")
+  if (note && currentAdapter instanceof SmartClipAdapter) {
+    const highlights = (currentAdapter as SmartClipAdapter).getHighlights()
+    const h = highlights.find(h => h.id === id)
+    if (h) {
+      (h as any).note = note
+      // 保存更新后的笔记
+      const all = getAllHighlights()
+      const idx = all.findIndex(x => x.id === id)
+      if (idx >= 0) all[idx] = h
+      saveAllHighlights(all)
+      showToast("已添加笔记", "success")
+    }
+  }
+}
+
+function getAllHighlights(): any[] {
+  try {
+    const key = "memflow_highlights_" + window.location.href
+    return JSON.parse(localStorage.getItem(key) || "[]")
+  } catch { return [] }
+}
+
+function saveAllHighlights(highlights: any[]) {
+  const key = "memflow_highlights_" + window.location.href
+  localStorage.setItem(key, JSON.stringify(highlights))
+}
+
+function handleTextSelection() {
+  const selection = window.getSelection()
+  if (!selection || !selection.toString().trim()) {
+    if (highlightPopup) {
+      highlightPopup.remove()
+      highlightPopup = null
+    }
+    return
+  }
+  
+  const selectedText = selection.toString().trim()
+  if (selectedText.length < 2) return
+  
+  // 显示高亮按钮
+  setTimeout(() => {
+    const range = selection.getRangeAt(0)
+    if (range.collapsed) return
+    
+    const rect = range.getBoundingClientRect()
+    showHighlightButton(rect, selectedText)
+  }, 100)
+}
+
+function showHighlightButton(rect: DOMRect, text: string) {
+  if (highlightPopup) {
+    highlightPopup.remove()
+  }
+  
+  highlightPopup = document.createElement("div")
+  highlightPopup.id = "memflow-highlight-popup"
+  highlightPopup.style.cssText = `
+    position: fixed;
+    top: ${rect.top - 32}px;
+    left: ${rect.left + rect.width / 2 - 40}px;
+    z-index: 2147483647;
+    display: flex;
+    gap: 4px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    padding: 4px 8px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  `
+  
+  const colors = [
+    { name: "黄", color: "#fef08a" },
+    { name: "绿", color: "#86efac" },
+    { name: "蓝", color: "#60a5fa" },
+    { name: "粉", color: "#f472b6" }
+  ]
+  
+  colors.forEach(c => {
+    const btn = document.createElement("button")
+    btn.style.cssText = `
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: ${c.color};
+      border: 2px solid rgba(255,255,255,0.8);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    `
+    btn.onmouseover = () => {
+      btn.style.transform = "scale(1.15)"
+    }
+    btn.onmouseout = () => {
+      btn.style.transform = "scale(1)"
+    }
+    btn.onclick = (e) => {
+      e.stopPropagation()
+      addHighlight(text, c.color === "#fef08a" ? "yellow" 
+        : c.color === "#86efac" ? "green" 
+        : c.color === "#60a5fa" ? "blue" : "pink")
+      highlightPopup?.remove()
+      highlightPopup = null
+    }
+    highlightPopup.appendChild(btn)
+  })
+  
+  document.body.appendChild(highlightPopup)
+}
+
+function addHighlight(text: string, color: string) {
+  if (currentAdapter instanceof SmartClipAdapter) {
+    const highlight = (currentAdapter as SmartClipAdapter).addHighlight(text, color)
+    
+    // 在选中文本上添加背景色
+    const selection = window.getSelection()
+    if (selection) {
+      try {
+        const range = selection.getRangeAt(0)
+        const span = document.createElement("span")
+        span.style.backgroundColor = color === "yellow" ? "rgba(255,255,0,0.4)" 
+          : color === "green" ? "rgba(0,255,0,0.3)" 
+          : color === "blue" ? "rgba(0,0,255,0.2)"
+          : "rgba(255,192,203,0.4)"
+        span.dataset.highlightId = highlight.id
+        range.surroundContents(span)
+      } catch (e) {
+        console.log("[SmartClip] 无法高亮复杂选择")
+      }
+    }
+    
+    showToast(`已添加高亮: "${text.slice(0, 20)}..."`, "success")
+  }
+}
+
+function createHighlightPopup(text: string) {
+  const colors = ["yellow", "green", "blue", "pink"]
+  const color = colors[Math.floor(Math.random() * colors.length)]
+  addHighlight(text, color)
+}

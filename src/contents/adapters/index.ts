@@ -5,6 +5,7 @@ import { createDeepSeekAdapter } from "./deepseek"
 import { createDoubaoAdapter } from "./doubao"
 import { createGeminiAdapter } from "./gemini"
 import { createKimiAdapter } from "./kimi"
+import { createSmartClipAdapter } from "./smartclip"
 
 export { BaseAdapter } from "./base-adapter"
 export { BiliBiliAdapter } from "./bilibili"
@@ -13,12 +14,12 @@ export { DeepSeekAdapter } from "./deepseek"
 export { DoubaoAdapter } from "./doubao"
 export { GeminiAdapter } from "./gemini"
 export { KimiAdapter } from "./kimi"
+export { SmartClipAdapter } from "./smartclip"
 
 /**
  * 自动检测当前平台并返回对应的适配器
  */
 export function detectPlatformAdapter(): IAdapter | null {
-  // 按优先级尝试检测
   const adapters = [
     createBiliBiliAdapter(),
     createDeepSeekAdapter(),
@@ -36,4 +37,33 @@ export function detectPlatformAdapter(): IAdapter | null {
   }
 
   return null
+}
+
+/**
+ * 检测是否应该使用 SmartClip 通用网页剪藏
+ * 当没有匹配到特定平台时，返回 SmartClip 适配器
+ */
+export function detectSmartClipAdapter(): IAdapter | null {
+  const currentHost = window.location.hostname
+  
+  const excludedHosts = [
+    "chat.deepseek.com",
+    "chatgpt.com",
+    "openai.com",
+    "kimi.moonshot.cn",
+    "kimi.ai",
+    "www.kimi.com",
+    "gemini.google.com",
+    "www.doubao.com",
+    "bilibili.com",
+    "www.bilibili.com"
+  ]
+  
+  for (const host of excludedHosts) {
+    if (currentHost.includes(host)) {
+      return null
+    }
+  }
+  
+  return createSmartClipAdapter()
 }
