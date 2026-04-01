@@ -175,6 +175,13 @@ function isSmartClip(): boolean {
   return currentAdapter instanceof SmartClipAdapter
 }
 
+function isAIChatPlatform(): boolean {
+  if (!currentAdapter) return false
+  const name = currentAdapter.platformName
+  return name === "ChatGPT" || name === "DeepSeek" || name === "Kimi" || 
+         name === "Gemini" || name === "Doubao" || name === "Bilibili"
+}
+
 /**
  * SmartClip 通用网页直接导出
  */
@@ -1662,6 +1669,12 @@ function initMemflow() {
   // B 站视频页面不创建工具栏按钮，只通过 popup 触发导出
   if (isBiliBiliVideo()) {
     console.log("[Memflow] B站视频页面，跳过工具栏按钮创建")
+    return
+  }
+
+  // 非 AI 对话平台页面不创建按钮（SmartClip 等其他页面使用右键/快捷键触发）
+  if (!isAIChatPlatform()) {
+    console.log("[Memflow] 非 AI 对话平台，跳过工具栏按钮创建")
     return
   }
 
