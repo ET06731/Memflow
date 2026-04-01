@@ -1,6 +1,8 @@
 # Memflow - 记忆流动
 
-从 AI 对话平台导出对话到 Obsidian 知识库的浏览器扩展。
+> 智能剪藏 · AI 增强 · 知识管理
+
+将散落在网页中的有价值内容——AI 对话、B 站视频、博客文章——一键剪藏到 Obsidian，配合 AI 智能摘要和高亮标注，让知识真正流动起来。
 
 [English](./README_EN.md) | [简体中文](./README.md)
 
