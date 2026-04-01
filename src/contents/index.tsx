@@ -1893,12 +1893,13 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
   
   // 删除按钮
   const deleteBtn = document.createElement("button")
-  deleteBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>`
+  deleteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>`
   deleteBtn.style.cssText = `
+    width: 18px;
+    height: 18px;
     background: transparent;
     border: none;
     cursor: pointer;
-    padding: 4px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1913,15 +1914,16 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
     highlightActionPopup?.remove()
     highlightActionPopup = null
   }
-  
+
   // 想法按钮
   const noteBtn = document.createElement("button")
-  noteBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`
+  noteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`
   noteBtn.style.cssText = `
+    width: 18px;
+    height: 18px;
     background: transparent;
     border: none;
     cursor: pointer;
-    padding: 4px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1932,7 +1934,7 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
   noteBtn.onmouseout = () => noteBtn.style.background = "transparent"
   noteBtn.onclick = (e) => {
     e.stopPropagation()
-    addNoteToHighlight(highlightId)
+    showNotePopup(highlightId, rect)
     highlightActionPopup?.remove()
     highlightActionPopup = null
   }
@@ -1986,21 +1988,133 @@ function changeHighlightColor(id: string, el: HTMLElement, color: string) {
   showToast("已更改颜色", "success")
 }
 
-function addNoteToHighlight(id: string) {
-  const note = window.prompt("添加想法/笔记：")
-  if (note && currentAdapter instanceof SmartClipAdapter) {
-    const highlights = (currentAdapter as SmartClipAdapter).getHighlights()
-    const h = highlights.find(h => h.id === id)
-    if (h) {
-      (h as any).note = note
-      // 保存更新后的笔记
-      const all = getAllHighlights()
-      const idx = all.findIndex(x => x.id === id)
-      if (idx >= 0) all[idx] = h
-      saveAllHighlights(all)
-      showToast("已添加笔记", "success")
+function showNotePopup(id: string, rect: DOMRect) {
+  const existing = document.getElementById("memflow-note-popup")
+  if (existing) existing.remove()
+
+  const popup = document.createElement("div")
+  popup.id = "memflow-note-popup"
+  
+  let left = rect.left
+  let top = rect.bottom + 8
+  if (left + 260 > window.innerWidth) left = window.innerWidth - 280
+  if (top + 160 > window.innerHeight) top = rect.top - 168
+  if (left < 0) left = 16
+  if (top < 0) top = 16
+
+  popup.style.cssText = `
+    position: fixed;
+    top: ${top}px;
+    left: ${left}px;
+    z-index: 2147483647;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    width: 260px;
+    padding: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  `
+
+  const header = document.createElement("div")
+  header.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;"
+  
+  const title = document.createElement("div")
+  title.textContent = "写想法"
+  title.style.cssText = "font-weight: 600; font-size: 14px; color: #1f2937;"
+  
+  const closeBtn = document.createElement("button")
+  closeBtn.innerHTML = \`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>\`
+  closeBtn.style.cssText = "background: transparent; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;"
+  
+  header.appendChild(title)
+  header.appendChild(closeBtn)
+
+  const textarea = document.createElement("textarea")
+  textarea.placeholder = "写想法"
+  textarea.style.cssText = \`
+    width: 100%;
+    min-height: 80px;
+    border: none;
+    outline: none;
+    resize: none;
+    font-size: 13px;
+    color: #4b5563;
+    background: transparent;
+    padding: 0;
+    box-sizing: border-box;
+  \`
+
+  const footer = document.createElement("div")
+  footer.style.cssText = "display: flex; justify-content: flex-end; align-items: center;"
+  
+  const sendBtn = document.createElement("button")
+  sendBtn.innerHTML = \`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>\`
+  sendBtn.style.cssText = "background: transparent; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
+
+  const saveNote = () => {
+    const note = textarea.value.trim()
+    if (note && currentAdapter instanceof SmartClipAdapter) {
+      const highlights = (currentAdapter as SmartClipAdapter).getHighlights()
+      const h = highlights.find(h => h.id === id)
+      if (h) {
+        (h as any).note = note
+        const all = getAllHighlights()
+        const idx = all.findIndex(x => x.id === id)
+        if (idx >= 0) all[idx] = h
+        saveAllHighlights(all)
+        showToast("已添加笔记", "success")
+      }
+    }
+    removePopup()
+  }
+
+  const removePopup = () => {
+    popup.remove()
+    document.removeEventListener("mousedown", clickOutsideHandler)
+  }
+
+  const clickOutsideHandler = (e: MouseEvent) => {
+    if (!popup.contains(e.target as Node)) {
+      removePopup()
     }
   }
+
+  closeBtn.onclick = (e) => {
+    e.stopPropagation()
+    removePopup()
+  }
+
+  sendBtn.onclick = (e) => {
+    e.stopPropagation()
+    saveNote()
+  }
+
+  textarea.onkeydown = (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      saveNote()
+    }
+  }
+
+  // sendBtn hover
+  sendBtn.onmouseover = () => sendBtn.style.stroke = "#3b82f6"
+  sendBtn.onmouseout = () => sendBtn.style.stroke = "#6b7280"
+
+  footer.appendChild(sendBtn)
+  
+  popup.appendChild(header)
+  popup.appendChild(textarea)
+  popup.appendChild(footer)
+  
+  document.body.appendChild(popup)
+  
+  setTimeout(() => {
+    textarea.focus()
+    document.addEventListener("mousedown", clickOutsideHandler)
+  }, 100)
 }
 
 function getAllHighlights(): any[] {
