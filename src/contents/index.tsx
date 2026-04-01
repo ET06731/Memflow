@@ -262,8 +262,11 @@ status: 🟢 待整理
     if (highlights.length > 0) {
       content += `---\n\n`
       content += `## ⭐ 高亮内容\n\n`
-      highlights.forEach((h, i) => {
+      highlights.forEach((h: any, i) => {
         content += `${i + 1}. ${h.text}\n`
+        if (h.note) {
+          content += `   > 💡 想法: ${h.note}\n`
+        }
       })
       content += "\n"
     }
@@ -830,8 +833,11 @@ status: 🟢 待整理
     if (aiHighlights.length > 0) {
       content += `---\n\n`
       content += `## ⭐ 高亮内容\n\n`
-      aiHighlights.forEach((h, i) => {
+      aiHighlights.forEach((h: any, i) => {
         content += `${i + 1}. ${h.text}\n`
+        if (h.note) {
+          content += `   > 💡 想法: ${h.note}\n`
+        }
       })
       content += "\n"
     }
@@ -1885,18 +1891,19 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
     z-index: 2147483647;
     display: flex;
     gap: 8px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #fdfbf7;
+    border: 1px solid rgba(0,0,0,0.06);
     border-radius: 20px;
-    padding: 6px 10px;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    padding: 6px 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 4px rgba(0,0,0,0.04);
   `
   
   // 删除按钮
   const deleteBtn = document.createElement("button")
-  deleteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>`
+  deleteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>`
   deleteBtn.style.cssText = `
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     background: transparent;
     border: none;
     cursor: pointer;
@@ -1906,7 +1913,7 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
     justify-content: center;
     transition: all 0.2s;
   `
-  deleteBtn.onmouseover = () => deleteBtn.style.background = "rgba(255,255,255,0.2)"
+  deleteBtn.onmouseover = () => deleteBtn.style.background = "rgba(0,0,0,0.06)"
   deleteBtn.onmouseout = () => deleteBtn.style.background = "transparent"
   deleteBtn.onclick = (e) => {
     e.stopPropagation()
@@ -1917,10 +1924,10 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
 
   // 想法按钮
   const noteBtn = document.createElement("button")
-  noteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`
+  noteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`
   noteBtn.style.cssText = `
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     background: transparent;
     border: none;
     cursor: pointer;
@@ -1930,7 +1937,7 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
     justify-content: center;
     transition: all 0.2s;
   `
-  noteBtn.onmouseover = () => noteBtn.style.background = "rgba(255,255,255,0.2)"
+  noteBtn.onmouseover = () => noteBtn.style.background = "rgba(0,0,0,0.06)"
   noteBtn.onmouseout = () => noteBtn.style.background = "transparent"
   noteBtn.onclick = (e) => {
     e.stopPropagation()
@@ -1948,7 +1955,7 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
       height: 18px;
       border-radius: 50%;
       background: ${c};
-      border: 2px solid rgba(255,255,255,0.8);
+      border: 1px solid rgba(0,0,0,0.1);
       cursor: pointer;
       transition: all 0.2s;
       box-shadow: 0 1px 3px rgba(0,0,0,0.2);
@@ -2027,7 +2034,7 @@ function showNotePopup(id: string, rect: DOMRect) {
   title.style.cssText = "font-weight: 600; font-size: 14px; color: #1f2937;"
   
   const closeBtn = document.createElement("button")
-  closeBtn.innerHTML = \`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>\`
+  closeBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`
   closeBtn.style.cssText = "background: transparent; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;"
   
   header.appendChild(title)
@@ -2035,7 +2042,7 @@ function showNotePopup(id: string, rect: DOMRect) {
 
   const textarea = document.createElement("textarea")
   textarea.placeholder = "写想法"
-  textarea.style.cssText = \`
+  textarea.style.cssText = `
     width: 100%;
     min-height: 80px;
     border: none;
@@ -2046,13 +2053,13 @@ function showNotePopup(id: string, rect: DOMRect) {
     background: transparent;
     padding: 0;
     box-sizing: border-box;
-  \`
+  `
 
   const footer = document.createElement("div")
   footer.style.cssText = "display: flex; justify-content: flex-end; align-items: center;"
   
   const sendBtn = document.createElement("button")
-  sendBtn.innerHTML = \`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>\`
+  sendBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`
   sendBtn.style.cssText = "background: transparent; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
 
   const saveNote = () => {
@@ -2129,29 +2136,6 @@ function saveAllHighlights(highlights: any[]) {
   localStorage.setItem(key, JSON.stringify(highlights))
 }
 
-function handleTextSelection() {
-  const selection = window.getSelection()
-  if (!selection || !selection.toString().trim()) {
-    if (highlightPopup) {
-      highlightPopup.remove()
-      highlightPopup = null
-    }
-    return
-  }
-  
-  const selectedText = selection.toString().trim()
-  if (selectedText.length < 2) return
-  
-  // 显示高亮按钮
-  setTimeout(() => {
-    const range = selection.getRangeAt(0)
-    if (range.collapsed) return
-    
-    const rect = range.getBoundingClientRect()
-    showHighlightButton(rect, selectedText)
-  }, 100)
-}
-
 function showHighlightButton(rect: DOMRect, text: string) {
   if (highlightPopup) {
     highlightPopup.remove()
@@ -2161,15 +2145,16 @@ function showHighlightButton(rect: DOMRect, text: string) {
   highlightPopup.id = "memflow-highlight-popup"
   highlightPopup.style.cssText = `
     position: fixed;
-    top: ${rect.top - 32}px;
+    top: ${rect.top - 40}px;
     left: ${rect.left + rect.width / 2 - 40}px;
     z-index: 2147483647;
     display: flex;
-    gap: 4px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    gap: 6px;
+    background: #fdfbf7;
+    border: 1px solid rgba(0,0,0,0.06);
     border-radius: 16px;
-    padding: 4px 8px;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    padding: 6px 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 4px rgba(0,0,0,0.04);
   `
   
   const colors = [
@@ -2186,7 +2171,7 @@ function showHighlightButton(rect: DOMRect, text: string) {
       height: 18px;
       border-radius: 50%;
       background: ${c.color};
-      border: 2px solid rgba(255,255,255,0.8);
+      border: 1px solid rgba(0,0,0,0.1);
       cursor: pointer;
       transition: all 0.2s ease;
       box-shadow: 0 1px 3px rgba(0,0,0,0.2);

@@ -347,7 +347,22 @@ export class BiliBiliAdapter extends BaseAdapter {
       info.title = videoData.title || ""
       info.description = videoData.desc || ""
       info.aid = String(videoData.aid || "")
-      info.cid = String(videoData.cid || "")
+
+      // 处理多-part视频：获取当前part的CID
+      const urlParams = new URLSearchParams(window.location.search)
+      const currentPart = parseInt(urlParams.get("p") || "1", 10)
+      
+      // 如果有多个part，从pages数组中获取当前part的CID
+      if (videoData.pages && Array.isArray(videoData.pages) && videoData.pages.length > 1) {
+        const pageIndex = currentPart - 1
+        if (pageIndex >= 0 && pageIndex < videoData.pages.length) {
+          info.cid = String(videoData.pages[pageIndex].cid || videoData.cid)
+        } else {
+          info.cid = String(videoData.cid || "")
+        }
+      } else {
+        info.cid = String(videoData.cid || "")
+      }
 
       if (videoData.owner) {
         info.uploader = videoData.owner.name || ""

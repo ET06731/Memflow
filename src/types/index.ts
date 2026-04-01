@@ -53,6 +53,7 @@ export interface ObsidianConfig {
   autoOpen: boolean
   saveSubtitles?: boolean
   saveSubtitlesWithTimestamp?: boolean
+  enableHighlight?: boolean
 }
 
 /**
