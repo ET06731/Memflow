@@ -6,6 +6,7 @@ import { createDoubaoAdapter } from "./doubao"
 import { createGeminiAdapter } from "./gemini"
 import { createKimiAdapter } from "./kimi"
 import { createSmartClipAdapter } from "./smartclip"
+import { createYouTubeAdapter } from "./youtube"
 
 export { BaseAdapter } from "./base-adapter"
 export { BiliBiliAdapter } from "./bilibili"
@@ -15,6 +16,7 @@ export { DoubaoAdapter } from "./doubao"
 export { GeminiAdapter } from "./gemini"
 export { KimiAdapter } from "./kimi"
 export { SmartClipAdapter } from "./smartclip"
+export { YouTubeAdapter } from "./youtube"
 
 /**
  * 自动检测当前平台并返回对应的适配器
@@ -22,6 +24,7 @@ export { SmartClipAdapter } from "./smartclip"
 export function detectPlatformAdapter(): IAdapter | null {
   const adapters = [
     createBiliBiliAdapter(),
+    createYouTubeAdapter(),
     createDeepSeekAdapter(),
     createChatGPTAdapter(),
     createKimiAdapter(),
@@ -45,7 +48,7 @@ export function detectPlatformAdapter(): IAdapter | null {
  */
 export function detectSmartClipAdapter(): IAdapter | null {
   const currentHost = window.location.hostname
-  
+
   const excludedHosts = [
     "chat.deepseek.com",
     "chatgpt.com",
@@ -56,14 +59,17 @@ export function detectSmartClipAdapter(): IAdapter | null {
     "gemini.google.com",
     "www.doubao.com",
     "bilibili.com",
-    "www.bilibili.com"
+    "www.bilibili.com",
+    "youtube.com",
+    "www.youtube.com",
+    "youtu.be"
   ]
-  
+
   for (const host of excludedHosts) {
     if (currentHost.includes(host)) {
       return null
     }
   }
-  
+
   return createSmartClipAdapter()
 }

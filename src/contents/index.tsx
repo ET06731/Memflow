@@ -4,7 +4,13 @@ import { ObsidianURIHandler } from "../obsidian/uri-handler"
 import { createMarkdownBuilder, createMetadataGenerator } from "../processing"
 import { AIService } from "../services/ai-api"
 import type { AIApiConfig, Conversation } from "../types"
-import { BiliBiliAdapter, detectPlatformAdapter, detectSmartClipAdapter, SmartClipAdapter } from "./adapters"
+import {
+  BiliBiliAdapter,
+  detectPlatformAdapter,
+  detectSmartClipAdapter,
+  SmartClipAdapter,
+  YouTubeAdapter
+} from "./adapters"
 
 /**
  * 构建 B 站视频的 Markdown 内容
@@ -113,6 +119,76 @@ status: 🟢 待整理
   return yaml + "\n\n" + content
 }
 
+/**
+ * 构建 YouTube 视频的 Markdown 内容
+ */
+function buildYouTubeMarkdown(
+  videoInfo: {
+    title: string
+    channelName: string
+    channelUrl: string
+    description: string
+    viewCount: string
+    likeCount: string
+    publishDate: string
+    thumbnail: string
+    duration: string
+  },
+  subtitles: string
+): string {
+  const date = new Date().toISOString().split("T")[0]
+  const tags = ["YouTube视频"].join(", ")
+
+  const yaml = `---
+created: ${date}
+source: [[YouTube视频]]
+original_url: "${window.location.href}"
+tags: [${tags}]
+category: 娱乐
+status: 🟢 待整理
+---`
+
+  let content = ""
+
+  content += `# ${videoInfo.title}\n\n`
+
+  content += `## 📺 视频信息\n\n`
+  content += `- **频道**: [${videoInfo.channelName}](${videoInfo.channelUrl})\n`
+  if (videoInfo.publishDate) {
+    content += `- **发布时间**: ${videoInfo.publishDate}\n`
+  }
+  content += `- **播放量**: ${videoInfo.viewCount}\n`
+  if (videoInfo.likeCount) {
+    content += `- **点赞**: ${videoInfo.likeCount}\n`
+  }
+  if (videoInfo.duration) {
+    content += `- **时长**: ${videoInfo.duration}\n`
+  }
+
+  if (videoInfo.description) {
+    content += `---\n\n`
+    content += `## 📝 视频简介\n\n`
+    content += `${videoInfo.description}\n\n`
+  }
+
+  if (subtitles) {
+    content += `---\n\n`
+    content += `## 📄 字幕内容\n\n`
+    const truncatedSubtitles =
+      subtitles.length > 50000
+        ? subtitles.slice(0, 50000) + "\n\n...（字幕过长，已截断）"
+        : subtitles
+    content += truncatedSubtitles + "\n"
+  }
+
+  content += `---\n\n`
+  content += `## 📎 相关信息\n\n`
+  content += `- **视频地址**: ${window.location.href}\n`
+  content += `- **导出时间**: ${new Date().toLocaleString("zh-CN")}\n`
+
+  return yaml + "\n\n" + content
+}
+
 export const config: PlasmoCSConfig = {
   matches: [
     "https://chat.deepseek.com/*",
@@ -133,6 +209,12 @@ export const config: PlasmoCSConfig = {
     // B站其他列表页
     "https://www.bilibili.com/list/*",
     "https://bilibili.com/list/*",
+    // YouTube视频页面
+    "https://www.youtube.com/watch*",
+    "https://youtube.com/watch*",
+    "https://youtu.be/*",
+    "https://www.youtube.com/shorts/*",
+    "https://youtube.com/shorts/*",
     // SmartClip: 通用网页剪藏 - 所有HTTP/HTTPS页面
     "<all_urls>"
   ]
@@ -149,6 +231,11 @@ if (
   currentAdapter instanceof BiliBiliAdapter &&
   (currentAdapter.isVideoPage() || currentAdapter.isListPage())
 ) {
+  currentAdapter.installSubtitleHook()
+}
+
+// 如果是 YouTube 视频页面，立即安装字幕拦截器
+if (currentAdapter instanceof YouTubeAdapter && currentAdapter.isVideoPage()) {
   currentAdapter.installSubtitleHook()
 }
 
@@ -171,6 +258,13 @@ function isBiliBiliVideo(): boolean {
   return currentAdapter?.platformName === "Bilibili"
 }
 
+/**
+ * 判断是否为 YouTube 视频页面
+ */
+function isYouTubeVideo(): boolean {
+  return currentAdapter?.platformName === "YouTube"
+}
+
 function isSmartClip(): boolean {
   return currentAdapter instanceof SmartClipAdapter
 }
@@ -178,8 +272,14 @@ function isSmartClip(): boolean {
 function isAIChatPlatform(): boolean {
   if (!currentAdapter) return false
   const name = currentAdapter.platformName
-  return name === "ChatGPT" || name === "DeepSeek" || name === "Kimi" || 
-         name === "Gemini" || name === "Doubao" || name === "Bilibili"
+  return (
+    name === "ChatGPT" ||
+    name === "DeepSeek" ||
+    name === "Kimi" ||
+    name === "Gemini" ||
+    name === "Doubao" ||
+    name === "Bilibili"
+  )
 }
 
 /**
@@ -206,7 +306,9 @@ async function exportSmartClipDirect() {
       return
     }
 
-    console.log(`[Memflow SmartClip] 提取到内容，长度: ${conversation.messages[0]?.content.length || 0}`)
+    console.log(
+      `[Memflow SmartClip] 提取到内容，长度: ${conversation.messages[0]?.content.length || 0}`
+    )
 
     // 2. 生成本地元数据
     const metadataGen = createMetadataGenerator()
@@ -214,7 +316,9 @@ async function exportSmartClipDirect() {
 
     // 3. 构建 Markdown 内容
     const date = new Date().toISOString().split("T")[0]
-    const tags = ["SmartClip", ...localMetadata.keywords].filter((t) => t).join(", ")
+    const tags = ["SmartClip", ...localMetadata.keywords]
+      .filter((t) => t)
+      .join(", ")
 
     const yaml = `---
 created: ${date}
@@ -262,10 +366,11 @@ status: 🟢 待整理
     content += localMetadata.keywords.join(", ") + "\n\n"
 
     // 高亮内容
-    const highlights = currentAdapter instanceof SmartClipAdapter 
-      ? (currentAdapter as SmartClipAdapter).getHighlights() 
-      : []
-    
+    const highlights =
+      currentAdapter instanceof SmartClipAdapter
+        ? (currentAdapter as SmartClipAdapter).getHighlights()
+        : []
+
     if (highlights.length > 0) {
       content += `---\n\n`
       content += `## ⭐ 高亮内容\n\n`
@@ -518,6 +623,94 @@ async function exportDirect() {
       }
     }
 
+    // YouTube 视频处理
+    if (currentAdapter instanceof YouTubeAdapter) {
+      const youtubeAdapter = currentAdapter as YouTubeAdapter
+
+      if (youtubeAdapter.isVideoPage()) {
+        let conversation = youtubeAdapter.extractConversation()
+        let subtitles = ""
+
+        const { obsidianConfig: videoConfig } =
+          await chrome.storage.sync.get("obsidianConfig")
+
+        if (videoConfig?.saveSubtitles !== false) {
+          showToast("正在获取字幕...", "warning")
+          console.log("[Memflow YouTube] 正在获取字幕...")
+
+          const videoBaseUrl = window.location.href.split("?")[0]
+          subtitles = await youtubeAdapter.getSubtitles(
+            !!videoConfig?.saveSubtitlesWithTimestamp,
+            videoBaseUrl
+          )
+        } else {
+          console.log("[Memflow YouTube] 设置中禁用了保存字幕")
+        }
+
+        if (subtitles && subtitles.length > 0) {
+          conversation.messages.push({
+            role: "assistant",
+            content: "\n---\n\n## 视频字幕\n\n" + subtitles,
+            timestamp: new Date()
+          })
+          console.log(
+            "[Memflow YouTube] 字幕获取成功:",
+            subtitles.slice(0, 100) + "..."
+          )
+        } else {
+          console.log("[Memflow YouTube] 未找到字幕")
+          showToast("未找到字幕，将导出视频基本信息", "warning")
+        }
+
+        if (conversation.messages.length === 0) {
+          showToast("没有找到对话内容", "warning")
+          return
+        }
+
+        console.log(`[Memflow] 提取到 ${conversation.messages.length} 条消息`)
+
+        const videoInfo = youtubeAdapter.getVideoInfo()
+        const youtubeMarkdown = buildYouTubeMarkdown(videoInfo, subtitles)
+
+        const { obsidianConfig } =
+          await chrome.storage.sync.get("obsidianConfig")
+
+        if (!chrome.runtime?.id || !chrome.storage) {
+          downloadMarkdown(youtubeMarkdown, videoInfo.title)
+          showToast("已导出为文件", "success")
+          return
+        }
+
+        if (!obsidianConfig?.vaultName) {
+          downloadMarkdown(youtubeMarkdown, videoInfo.title)
+          showToast("请在扩展设置中配置 Obsidian", "warning")
+          return
+        }
+
+        if (obsidianConfig.exportMethod === "uri") {
+          const handler = new ObsidianURIHandler(obsidianConfig)
+          const result = await handler.exportToObsidian(youtubeMarkdown, {
+            title: videoInfo.title,
+            summary: "",
+            keywords: [],
+            category: "娱乐",
+            platform: "YouTube",
+            url: window.location.href
+          })
+          if (result.success) {
+            showToast(result.message, "success")
+          } else {
+            downloadMarkdown(youtubeMarkdown, videoInfo.title)
+            showToast("URI调用失败，已下载文件", "warning")
+          }
+        } else {
+          downloadMarkdown(youtubeMarkdown, videoInfo.title)
+          showToast("导出成功", "success")
+        }
+        return
+      }
+    }
+
     // SmartClip 通用网页导出
     if (currentAdapter instanceof SmartClipAdapter) {
       await exportSmartClipDirect()
@@ -732,6 +925,185 @@ status: 🟢 待整理
   }
 }
 
+/**
+ * YouTube 视频智能导出 - 使用 AI 总结字幕内容
+ */
+async function exportYouTubeSmart() {
+  try {
+    if (!currentAdapter || !(currentAdapter instanceof YouTubeAdapter)) {
+      showToast("当前页面不是 YouTube 视频", "error")
+      return
+    }
+
+    const { aiApiConfig } = await chrome.storage.sync.get("aiApiConfig")
+
+    const confirmed = window.confirm(
+      "🤖 YouTube 视频智能导出\n\n插件将提取视频字幕并使用 AI 生成深度结构化长文总结。\n\n💡 重要：使用前请先开启字幕！\n   1. 点击视频播放器右下角的「CC」按钮\n   2. 选择中文字幕（如果有）\n   3. 等待字幕显示后再点击「确定」\n\n是否继续？"
+    )
+    if (!confirmed) return
+
+    showVideoProgress(1)
+    console.log("[Memflow YouTube] 开始智能导出...")
+
+    const youtubeAdapter = currentAdapter as YouTubeAdapter
+    const videoInfo = youtubeAdapter.getVideoInfo()
+
+    const { obsidianConfig: topConfig } =
+      await chrome.storage.sync.get("obsidianConfig")
+    let subtitles = ""
+
+    const withTimestamp = topConfig?.saveSubtitlesWithTimestamp === true
+    const videoBaseUrl = window.location.href.split("?")[0]
+
+    subtitles = await youtubeAdapter.getSubtitles(withTimestamp, videoBaseUrl)
+
+    if (!subtitles || subtitles.length === 0) {
+      hideVideoProgress()
+      showToast(
+        "❌ 未检测到字幕！请先：1) 点击视频播放器右下角「CC」按钮开启字幕；2) 等待字幕加载；3) 然后重新点击智能导出",
+        "error"
+      )
+      console.log("[Memflow YouTube] 未找到字幕 - 请确保视频已开启字幕功能")
+      return
+    }
+
+    console.log("[Memflow YouTube] 字幕获取成功，长度:", subtitles.length)
+
+    if (!aiApiConfig?.enabled || !aiApiConfig?.apiKey) {
+      hideVideoProgress()
+      showToast("请在设置中配置 AI API", "error")
+      return
+    }
+
+    showVideoProgress(2, "发送请求...")
+
+    const aiConfig: AIApiConfig = {
+      enabled: aiApiConfig.enabled,
+      provider: aiApiConfig.provider || "deepseek",
+      apiKey: aiApiConfig.apiKey,
+      baseUrl: aiApiConfig.baseUrl || "",
+      model: aiApiConfig.model || "",
+      bilibiliPromptTemplate: aiApiConfig.bilibiliPromptTemplate || "tech"
+    }
+
+    const aiResult = await AIService.summarize({
+      subtitles,
+      videoInfo: {
+        title: videoInfo.title,
+        uploader: videoInfo.channelName,
+        description: videoInfo.description,
+        tags: []
+      },
+      config: aiConfig
+    })
+
+    console.log("[Memflow YouTube] AI 总结完成:", aiResult)
+
+    const finalTitle = aiResult.title || videoInfo.title
+    const date = new Date().toISOString().split("T")[0]
+    const tags = ["YouTube视频", ...aiResult.keywords]
+      .filter((t) => t)
+      .join(", ")
+
+    const yaml = `---
+created: ${date}
+source: [[YouTube视频]]
+original_url: "${window.location.href}"
+tags: [${tags}]
+category: ${aiResult.category as any}
+status: 🟢 待整理
+---`
+
+    let content = ""
+
+    content += `# ${videoInfo.title}\n\n`
+    content += `> 🤖 由 Memflow AI 总结\n\n`
+
+    content += `## 📺 视频信息\n\n`
+    content += `- **频道**: [${videoInfo.channelName}](${videoInfo.channelUrl})\n`
+    if (videoInfo.publishDate) {
+      content += `- **发布时间**: ${videoInfo.publishDate}\n`
+    }
+    content += `- **播放量**: ${videoInfo.viewCount}\n`
+    if (videoInfo.likeCount) {
+      content += `- **点赞**: ${videoInfo.likeCount}\n`
+    }
+    if (videoInfo.duration) {
+      content += `- **时长**: ${videoInfo.duration}\n`
+    }
+
+    content += `---\n\n`
+    content += `## 📝 视频简介\n\n`
+    content += `${videoInfo.description || "无简介"}\n\n`
+
+    content += `---\n\n`
+    content += `## 💡 AI 总结\n\n`
+    content += `${aiResult.summary}\n\n`
+
+    content += `---\n\n`
+    content += `## 🏷️ 关键词\n\n`
+    content += aiResult.keywords.join(", ") + "\n\n"
+
+    if (topConfig?.saveSubtitles !== false && subtitles) {
+      content += `---\n\n`
+      content += `## 📄 字幕原文\n\n`
+      content += `${subtitles}\n\n`
+    }
+
+    content += `---\n\n`
+    content += `## 📎 相关信息\n\n`
+    content += `- **视频地址**: ${window.location.href}\n`
+    content += `- **导出时间**: ${new Date().toLocaleString("zh-CN")}\n`
+
+    const markdownContent = yaml + "\n\n" + content
+
+    showVideoProgress(3)
+
+    if (!chrome.runtime?.id || !chrome.storage) {
+      hideVideoProgress()
+      downloadMarkdown(markdownContent, finalTitle)
+      showToast("已导出为文件", "success")
+      return
+    }
+
+    const { obsidianConfig } = await chrome.storage.sync.get("obsidianConfig")
+
+    if (!obsidianConfig || !obsidianConfig.vaultName) {
+      hideVideoProgress()
+      downloadMarkdown(markdownContent, finalTitle)
+      showToast("请在扩展设置中配置 Obsidian", "warning")
+      return
+    }
+
+    if (obsidianConfig.exportMethod === "uri") {
+      const handler = new ObsidianURIHandler(obsidianConfig)
+      const result = await handler.exportToObsidian(markdownContent, {
+        title: finalTitle,
+        summary: aiResult.summary,
+        keywords: aiResult.keywords,
+        category: aiResult.category as any,
+        platform: "YouTube",
+        url: window.location.href
+      })
+      hideVideoProgress()
+      if (result.success) {
+        showToast(result.message, "success")
+      } else {
+        downloadMarkdown(markdownContent, finalTitle)
+        showToast("URI调用失败，已下载文件", "warning")
+      }
+    } else {
+      hideVideoProgress()
+      downloadMarkdown(markdownContent, finalTitle)
+      showToast("导出成功", "success")
+    }
+  } catch (error) {
+    hideVideoProgress()
+    console.error("[Memflow YouTube] 智能导出失败:", error)
+    showToast(`智能导出失败: ${error.message}`, "error")
+  }
+}
+
 async function exportSmartClipSmart() {
   try {
     if (!(currentAdapter instanceof SmartClipAdapter)) {
@@ -778,13 +1150,18 @@ async function exportSmartClipSmart() {
     }
 
     const metadataGen = createMetadataGenerator()
-    const aiMetadata = await metadataGen.generateWithAI(conversation, currentAdapter)
+    const aiMetadata = await metadataGen.generateWithAI(
+      conversation,
+      currentAdapter
+    )
 
     console.log("[Memflow SmartClip] AI 元数据生成完成:", aiMetadata)
 
     // 5. 构建 Markdown 内容
     const date = new Date().toISOString().split("T")[0]
-    const tags = ["SmartClip", ...aiMetadata.keywords].filter((t) => t).join(", ")
+    const tags = ["SmartClip", ...aiMetadata.keywords]
+      .filter((t) => t)
+      .join(", ")
 
     const yaml = `---
 created: ${date}
@@ -833,10 +1210,11 @@ status: 🟢 待整理
     content += aiMetadata.keywords.join(", ") + "\n\n"
 
     // 高亮内容
-    const aiHighlights = currentAdapter instanceof SmartClipAdapter 
-      ? (currentAdapter as SmartClipAdapter).getHighlights() 
-      : []
-    
+    const aiHighlights =
+      currentAdapter instanceof SmartClipAdapter
+        ? (currentAdapter as SmartClipAdapter).getHighlights()
+        : []
+
     if (aiHighlights.length > 0) {
       content += `---\n\n`
       content += `## ⭐ 高亮内容\n\n`
@@ -927,6 +1305,12 @@ async function exportSmart() {
     // B 站视频的智能导出特殊处理
     if (isBiliBiliVideo()) {
       await exportBiliBiliSmart()
+      return
+    }
+
+    // YouTube 视频的智能导出特殊处理
+    if (isYouTubeVideo()) {
+      await exportYouTubeSmart()
       return
     }
 
@@ -1781,7 +2165,15 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
       return true
     }
 
-    // 非 B 站页面：尝试点击或创建按钮
+    // 如果是 YouTube 页面，直接调用导出函数
+    if (currentAdapter instanceof YouTubeAdapter) {
+      console.log("[Memflow] YouTube 页面，直接调用导出")
+      exportDirect()
+      sendResponse({ success: true })
+      return true
+    }
+
+    // 非 B 站/YouTube 页面：尝试点击或创建按钮
     const existingBtn = document.getElementById("memflow-export-btn")
     if (existingBtn) {
       existingBtn.click()
@@ -1816,13 +2208,13 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
 
 function initHighlightFeature() {
   console.log("[SmartClip] 初始化高亮功能...")
-  
+
   // 监听文本选择
   document.addEventListener("mouseup", handleTextSelection)
-  
+
   // 点击高亮区域显示操作菜单
   document.addEventListener("click", handleHighlightClick)
-  
+
   // 键盘快捷键 Ctrl+Shift+H 添加高亮
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.shiftKey && e.key === "H") {
@@ -1833,10 +2225,10 @@ function initHighlightFeature() {
       }
     }
   })
-  
+
   // 恢复之前的高亮显示
   if (currentAdapter instanceof SmartClipAdapter) {
-    (currentAdapter as SmartClipAdapter).renderHighlightsOnPage()
+    ;(currentAdapter as SmartClipAdapter).renderHighlightsOnPage()
   }
 }
 
@@ -1852,15 +2244,15 @@ function handleTextSelection() {
     }
     return
   }
-  
+
   const selectedText = selection.toString().trim()
   if (selectedText.length < 2) return
-  
+
   // 显示高亮按钮
   setTimeout(() => {
     const range = selection.getRangeAt(0)
     if (range.collapsed) return
-    
+
     const rect = range.getBoundingClientRect()
     showHighlightButton(rect, selectedText)
   }, 100)
@@ -1869,18 +2261,18 @@ function handleTextSelection() {
 function handleHighlightClick(e: MouseEvent) {
   const target = e.target as HTMLElement
   const highlightEl = target.closest("[data-highlight-id]")
-  
+
   if (highlightEl && currentAdapter instanceof SmartClipAdapter) {
     e.preventDefault()
     e.stopPropagation()
-    
+
     const highlightId = (highlightEl as HTMLElement).dataset.highlightId
     if (highlightId) {
       showHighlightActionMenu(highlightEl as HTMLElement, highlightId)
     }
     return
   }
-  
+
   // 点击其他地方关闭菜单
   if (highlightActionPopup) {
     highlightActionPopup.remove()
@@ -1892,9 +2284,9 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
   if (highlightActionPopup) {
     highlightActionPopup.remove()
   }
-  
+
   const rect = el.getBoundingClientRect()
-  
+
   highlightActionPopup = document.createElement("div")
   highlightActionPopup.id = "memflow-highlight-action"
   highlightActionPopup.style.cssText = `
@@ -1910,7 +2302,7 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
     padding: 6px 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 4px rgba(0,0,0,0.04);
   `
-  
+
   // 删除按钮
   const deleteBtn = document.createElement("button")
   deleteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>`
@@ -1926,8 +2318,9 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
     justify-content: center;
     transition: all 0.2s;
   `
-  deleteBtn.onmouseover = () => deleteBtn.style.background = "rgba(0,0,0,0.06)"
-  deleteBtn.onmouseout = () => deleteBtn.style.background = "transparent"
+  deleteBtn.onmouseover = () =>
+    (deleteBtn.style.background = "rgba(0,0,0,0.06)")
+  deleteBtn.onmouseout = () => (deleteBtn.style.background = "transparent")
   deleteBtn.onclick = (e) => {
     e.stopPropagation()
     deleteHighlight(highlightId, el)
@@ -1950,18 +2343,18 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
     justify-content: center;
     transition: all 0.2s;
   `
-  noteBtn.onmouseover = () => noteBtn.style.background = "rgba(0,0,0,0.06)"
-  noteBtn.onmouseout = () => noteBtn.style.background = "transparent"
+  noteBtn.onmouseover = () => (noteBtn.style.background = "rgba(0,0,0,0.06)")
+  noteBtn.onmouseout = () => (noteBtn.style.background = "transparent")
   noteBtn.onclick = (e) => {
     e.stopPropagation()
     showNotePopup(highlightId, rect)
     highlightActionPopup?.remove()
     highlightActionPopup = null
   }
-  
+
   // 颜色选择器
   const colors = ["#fef08a", "#86efac", "#60a5fa", "#f472b6"]
-  colors.forEach(c => {
+  colors.forEach((c) => {
     const colorBtn = document.createElement("button")
     colorBtn.style.cssText = `
       width: 18px;
@@ -1981,7 +2374,7 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
     }
     highlightActionPopup.appendChild(colorBtn)
   })
-  
+
   highlightActionPopup.appendChild(deleteBtn)
   highlightActionPopup.appendChild(noteBtn)
   document.body.appendChild(highlightActionPopup)
@@ -1989,7 +2382,7 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
 
 function deleteHighlight(id: string, el: HTMLElement) {
   if (currentAdapter instanceof SmartClipAdapter) {
-    (currentAdapter as SmartClipAdapter).removeHighlight(id)
+    ;(currentAdapter as SmartClipAdapter).removeHighlight(id)
     // 移除高亮样式
     el.style.backgroundColor = ""
     delete el.dataset.highlightId
@@ -2014,7 +2407,7 @@ function showNotePopup(id: string, rect: DOMRect) {
 
   const popup = document.createElement("div")
   popup.id = "memflow-note-popup"
-  
+
   let left = rect.left
   let top = rect.bottom + 8
   if (left + 260 > window.innerWidth) left = window.innerWidth - 280
@@ -2040,16 +2433,18 @@ function showNotePopup(id: string, rect: DOMRect) {
   `
 
   const header = document.createElement("div")
-  header.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;"
-  
+  header.style.cssText =
+    "display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;"
+
   const title = document.createElement("div")
   title.textContent = "写想法"
   title.style.cssText = "font-weight: 600; font-size: 14px; color: #1f2937;"
-  
+
   const closeBtn = document.createElement("button")
   closeBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`
-  closeBtn.style.cssText = "background: transparent; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;"
-  
+  closeBtn.style.cssText =
+    "background: transparent; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;"
+
   header.appendChild(title)
   header.appendChild(closeBtn)
 
@@ -2069,21 +2464,23 @@ function showNotePopup(id: string, rect: DOMRect) {
   `
 
   const footer = document.createElement("div")
-  footer.style.cssText = "display: flex; justify-content: flex-end; align-items: center;"
-  
+  footer.style.cssText =
+    "display: flex; justify-content: flex-end; align-items: center;"
+
   const sendBtn = document.createElement("button")
   sendBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`
-  sendBtn.style.cssText = "background: transparent; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
+  sendBtn.style.cssText =
+    "background: transparent; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
 
   const saveNote = () => {
     const note = textarea.value.trim()
     if (note && currentAdapter instanceof SmartClipAdapter) {
       const highlights = (currentAdapter as SmartClipAdapter).getHighlights()
-      const h = highlights.find(h => h.id === id)
+      const h = highlights.find((h) => h.id === id)
       if (h) {
-        (h as any).note = note
+        ;(h as any).note = note
         const all = getAllHighlights()
-        const idx = all.findIndex(x => x.id === id)
+        const idx = all.findIndex((x) => x.id === id)
         if (idx >= 0) all[idx] = h
         saveAllHighlights(all)
         showToast("已添加笔记", "success")
@@ -2120,17 +2517,17 @@ function showNotePopup(id: string, rect: DOMRect) {
   }
 
   // sendBtn hover
-  sendBtn.onmouseover = () => sendBtn.style.stroke = "#3b82f6"
-  sendBtn.onmouseout = () => sendBtn.style.stroke = "#6b7280"
+  sendBtn.onmouseover = () => (sendBtn.style.stroke = "#3b82f6")
+  sendBtn.onmouseout = () => (sendBtn.style.stroke = "#6b7280")
 
   footer.appendChild(sendBtn)
-  
+
   popup.appendChild(header)
   popup.appendChild(textarea)
   popup.appendChild(footer)
-  
+
   document.body.appendChild(popup)
-  
+
   setTimeout(() => {
     textarea.focus()
     document.addEventListener("mousedown", clickOutsideHandler)
@@ -2141,7 +2538,9 @@ function getAllHighlights(): any[] {
   try {
     const key = "memflow_highlights_" + window.location.href
     return JSON.parse(localStorage.getItem(key) || "[]")
-  } catch { return [] }
+  } catch {
+    return []
+  }
 }
 
 function saveAllHighlights(highlights: any[]) {
@@ -2153,7 +2552,7 @@ function showHighlightButton(rect: DOMRect, text: string) {
   if (highlightPopup) {
     highlightPopup.remove()
   }
-  
+
   highlightPopup = document.createElement("div")
   highlightPopup.id = "memflow-highlight-popup"
   highlightPopup.style.cssText = `
@@ -2169,15 +2568,15 @@ function showHighlightButton(rect: DOMRect, text: string) {
     padding: 6px 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 4px rgba(0,0,0,0.04);
   `
-  
+
   const colors = [
     { name: "黄", color: "#fef08a" },
     { name: "绿", color: "#86efac" },
     { name: "蓝", color: "#60a5fa" },
     { name: "粉", color: "#f472b6" }
   ]
-  
-  colors.forEach(c => {
+
+  colors.forEach((c) => {
     const btn = document.createElement("button")
     btn.style.cssText = `
       width: 18px;
@@ -2197,39 +2596,53 @@ function showHighlightButton(rect: DOMRect, text: string) {
     }
     btn.onclick = (e) => {
       e.stopPropagation()
-      addHighlight(text, c.color === "#fef08a" ? "yellow" 
-        : c.color === "#86efac" ? "green" 
-        : c.color === "#60a5fa" ? "blue" : "pink")
+      addHighlight(
+        text,
+        c.color === "#fef08a"
+          ? "yellow"
+          : c.color === "#86efac"
+            ? "green"
+            : c.color === "#60a5fa"
+              ? "blue"
+              : "pink"
+      )
       highlightPopup?.remove()
       highlightPopup = null
     }
     highlightPopup.appendChild(btn)
   })
-  
+
   document.body.appendChild(highlightPopup)
 }
 
 function addHighlight(text: string, color: string) {
   if (currentAdapter instanceof SmartClipAdapter) {
-    const highlight = (currentAdapter as SmartClipAdapter).addHighlight(text, color)
-    
+    const highlight = (currentAdapter as SmartClipAdapter).addHighlight(
+      text,
+      color
+    )
+
     // 在选中文本上添加背景色
     const selection = window.getSelection()
     if (selection) {
       try {
         const range = selection.getRangeAt(0)
         const span = document.createElement("span")
-        span.style.backgroundColor = color === "yellow" ? "rgba(255,255,0,0.4)" 
-          : color === "green" ? "rgba(0,255,0,0.3)" 
-          : color === "blue" ? "rgba(0,0,255,0.2)"
-          : "rgba(255,192,203,0.4)"
+        span.style.backgroundColor =
+          color === "yellow"
+            ? "rgba(255,255,0,0.4)"
+            : color === "green"
+              ? "rgba(0,255,0,0.3)"
+              : color === "blue"
+                ? "rgba(0,0,255,0.2)"
+                : "rgba(255,192,203,0.4)"
         span.dataset.highlightId = highlight.id
         range.surroundContents(span)
       } catch (e) {
         console.log("[SmartClip] 无法高亮复杂选择")
       }
     }
-    
+
     showToast(`已添加高亮: "${text.slice(0, 20)}..."`, "success")
   }
 }

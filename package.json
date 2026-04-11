@@ -48,7 +48,10 @@
       "https://gemini.google.com/*",
       "https://www.doubao.com/*",
       "https://*.bilibili.com/*",
-      "https://bilibili.com/*"
+      "https://bilibili.com/*",
+      "https://*.youtube.com/*",
+      "https://youtube.com/*",
+      "https://youtu.be/*"
     ],
     "permissions": [
       "storage"
