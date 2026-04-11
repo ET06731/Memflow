@@ -34,11 +34,20 @@ pnpm build
 
 ### 安装说明 (使用)
 
-1. 前往本仓库的 **[Releases](https://github.com/your-repo/releases)** 页面
-2. 下载最新版本（如 `v1.0.1`）的 `memflow-xxx.zip` 压缩包并解压到一个文件夹
-3. 打开 Chrome 浏览器，访问 `chrome://extensions`
+#### Chrome / Chromium 内核浏览器
+
+1. 前往本仓库的 **[Releases](https://github.com/ET06731/Memflow/releases)** 页面
+2. 下载最新版本的 `memflow-xxx.zip` 压缩包并解压到一个文件夹
+3. 打开浏览器，访问 `chrome://extensions`（Chrome）或 `edge://extensions`（Edge）
 4. 打开右上角的 **"开发者模式"**
 5. 点击左上角 **"加载已解压的扩展程序"**，选择你刚刚解压的文件夹即可！
+
+#### Microsoft Edge
+
+> Edge 商店版本更新可能比 GitHub 慢一些，如需最新版本请使用上述 Chrome 安装方式。
+
+1. 访问 [Edge 扩展商店](https://microsoftedge.microsoft.com/addons/detail/memflow-export-ai-chat-/kglkmjhkednjkiolndkphcbcfkhalaan) 安装
+2. 点击"获取"按钮添加扩展
 
 ### 在开发者模式中加载 (开发)
 
@@ -48,17 +57,20 @@ pnpm build
 ### 使用方法
 
 #### AI 对话平台
+
 1. 访问支持的 AI 平台（DeepSeek、ChatGPT、Kimi、Gemini、豆包）
 2. 进行对话
 3. 点击页面右上角的导出按钮
 4. Markdown 文件将自动下载或打开 Obsidian
 
 #### B 站视频
+
 1. 打开任意 B 站视频，确保已开启字幕
 2. 点击扩展按钮，选择智能导出
 3. 自动提取字幕并生成结构化摘要
 
 #### 通用网页剪藏
+
 1. 打开任意网页
 2. **直接导出**：点击工具栏按钮
 3. **智能导出**：右键点击按钮或 Shift+左键
@@ -66,6 +78,7 @@ pnpm build
 5. **高亮操作**：点击已高亮区域可删除、更改颜色、添加笔记
 
 #### 快捷键
+
 - `Ctrl+Shift+E`：直接导出
 - `Ctrl+Shift+G`：智能导出（AI 总结）
 
