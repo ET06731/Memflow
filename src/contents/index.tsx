@@ -8,6 +8,7 @@ import {
   BiliBiliAdapter,
   detectPlatformAdapter,
   detectSmartClipAdapter,
+  DoubaoAdapter,
   SmartClipAdapter,
   YouTubeAdapter
 } from "./adapters"
