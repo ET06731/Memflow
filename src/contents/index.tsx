@@ -2216,16 +2216,18 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
   }
 })
 
-function initHighlightFeature() {
+async function initHighlightFeature() {
+  const { obsidianConfig } = await chrome.storage.sync.get("obsidianConfig")
+  if (obsidianConfig?.enableHighlight !== true) {
+    console.log("[SmartClip] 高亮功能未启用，跳过初始化")
+    return
+  }
+
   console.log("[SmartClip] 初始化高亮功能...")
 
-  // 监听文本选择
   document.addEventListener("mouseup", handleTextSelection)
-
-  // 点击高亮区域显示操作菜单
   document.addEventListener("click", handleHighlightClick)
 
-  // 键盘快捷键 Ctrl+Shift+H 添加高亮
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.shiftKey && e.key === "H") {
       e.preventDefault()
@@ -2236,7 +2238,6 @@ function initHighlightFeature() {
     }
   })
 
-  // 恢复之前的高亮显示
   if (currentAdapter instanceof SmartClipAdapter) {
     ;(currentAdapter as SmartClipAdapter).renderHighlightsOnPage()
   }
