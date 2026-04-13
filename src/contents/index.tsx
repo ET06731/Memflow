@@ -2051,15 +2051,16 @@ function initMemflow() {
 
   injectStyles()
 
-  // B 站视频页面不创建工具栏按钮，只通过 popup 触发导出
-  if (isBiliBiliVideo()) {
-    console.log("[Memflow] B站视频页面，跳过工具栏按钮创建")
+  if (isSmartClip()) {
+    initHighlightFeature()
     return
   }
 
-  // 非 AI 对话平台页面不创建按钮（SmartClip 等其他页面使用右键/快捷键触发）
+  if (isBiliBiliVideo()) {
+    return
+  }
+
   if (!isAIChatPlatform()) {
-    console.log("[Memflow] 非 AI 对话平台，跳过工具栏按钮创建")
     return
   }
 
