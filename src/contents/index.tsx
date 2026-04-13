@@ -277,7 +277,7 @@ function isAIChatPlatform(): boolean {
     name === "DeepSeek" ||
     name === "Kimi" ||
     name === "Gemini" ||
-    name === "Doubao" ||
+    name === "豆包" ||
     name === "Bilibili"
   )
 }
@@ -2173,7 +2173,15 @@ chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
       return true
     }
 
-    // 非 B 站/YouTube 页面：尝试点击或创建按钮
+    // 如果是豆包页面，直接调用导出函数
+    if (currentAdapter instanceof DoubaoAdapter) {
+      console.log("[Memflow] 豆包页面，直接调用导出")
+      exportDirect()
+      sendResponse({ success: true })
+      return true
+    }
+
+    // 非 B 站/YouTube/豆包 页面：尝试点击或创建按钮
     const existingBtn = document.getElementById("memflow-export-btn")
     if (existingBtn) {
       existingBtn.click()

@@ -407,6 +407,9 @@ function Options() {
           transition: all 0.2s ease;
           border-left: 3px solid transparent;
           font-size: 14px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
         }
         .tab:hover {
           color: #e5e5e5;
@@ -562,21 +565,25 @@ function Options() {
           <div
             className={`tab ${activeTab === "general" ? "active" : ""}`}
             onClick={() => setActiveTab("general")}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
             {lang === "zh" ? "通用设置" : "General"}
           </div>
           <div
             className={`tab ${activeTab === "template" ? "active" : ""}`}
             onClick={() => setActiveTab("template")}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
             {lang === "zh" ? "模板设置" : "Template"}
           </div>
           <div
             className={`tab ${activeTab === "ai" ? "active" : ""}`}
             onClick={() => setActiveTab("ai")}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="14" x="3" y="8" rx="2"/><path d="M12 5a3 3 0 1 0-3 3"/><path d="M9 8v2"/><path d="M15 8v2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
             {t.aiApiConfig}
           </div>
           <div
             className={`tab ${activeTab === "about" ? "active" : ""}`}
             onClick={() => setActiveTab("about")}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
             {lang === "zh" ? "关于 Memflow" : "About"}
           </div>
         </div>
