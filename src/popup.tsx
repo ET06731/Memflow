@@ -7,7 +7,7 @@ type Lang = "zh" | "en"
 interface TemplateConfig {
   bilibili: {
     enabled: boolean
-    templateType: "tech" | "study" | "coding" | "news" | "custom"
+    templateType: "tech" | "study" | "english" | "coding" | "news" | "custom"
     customTemplate: string
     includeOriginalSubtitles: boolean
     includeTimestamp: boolean
@@ -59,6 +59,7 @@ const i18n = {
 const templateOptions = [
   { id: "tech", name: "💻 科技", nameEn: "Tech" },
   { id: "study", name: "📚 知识", nameEn: "Study" },
+  { id: "english", name: "🌐 英语学习", nameEn: "English" },
   { id: "coding", name: "🔥 代码", nameEn: "Coding" },
   { id: "news", name: "📰 资讯", nameEn: "News" },
   { id: "custom", name: "✏️ 自定义", nameEn: "Custom" }
@@ -454,6 +455,7 @@ function Popup() {
         .save-btn {
           width: 100%;
           padding: 10px;
+          margin-top: 12px;
           background: ${saved ? "#10b981" : "rgba(245, 158, 11, 0.1)"};
           color: ${saved ? "#fff" : "#f59e0b"};
           border: 1px solid ${saved ? "#10b981" : "rgba(245, 158, 11, 0.3)"};
@@ -469,10 +471,9 @@ function Popup() {
         }
 
         .template-section {
-          padding: 14px;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 14px;
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          margin-top: 14px;
+          padding-top: 14px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .template-header {
@@ -782,30 +783,7 @@ function Popup() {
                   placeholder={t.defaultFolderPlaceholder}
                 />
               </div>
-              <button className="save-btn" onClick={saveConfig}>
-                {saved ? (
-                  <>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    {t.saved}
-                  </>
-                ) : (
-                  t.saveConfig
-                )}
-              </button>
-            </div>
-
-            <div className="template-section">
+              <div className="template-section">
               <div
                 className="template-header"
                 onClick={() => setShowTemplateSettings(!showTemplateSettings)}>
@@ -948,6 +926,29 @@ function Popup() {
                   )}
                 </div>
               )}
+              </div>
+
+              <button className="save-btn" onClick={saveConfig}>
+                {saved ? (
+                  <>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    {t.saved}
+                  </>
+                ) : (
+                  t.saveConfig
+                )}
+              </button>
             </div>
           </div>
         </div>

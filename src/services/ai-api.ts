@@ -61,6 +61,11 @@ export interface SummarizeResult {
   summary: string
   keywords: string[]
   category: "编程" | "生活" | "思考" | "项目" | "娱乐" | "教育" | "技术"
+  highFrequencyWords?: Array<{ word: string; translation: string; example: string }>
+  commonPhrases?: Array<{ phrase: string; translation: string; example: string }>
+  idioms?: Array<{ idiom: string; meaning: string; origin: string }>
+  trendingPhrases?: Array<{ phrase: string; meaning: string; context: string }>
+  originalTextWithBold?: string
 }
 
 /**
@@ -157,7 +162,7 @@ export class AIService {
       description: string
       tags: string[]
     },
-    template?: "tech" | "study"
+    template?: "tech" | "study" | "english"
   ): string {
     const originalTokens = estimateTokens(subtitles)
     const maxSubtitles = compressToTargetTokens(subtitles, 4000)
@@ -171,10 +176,14 @@ export class AIService {
       roleDescription = "角色设定：你是一位资深的科技专栏作家和深度内容编辑。\n"
       taskDescription = "任务描述：请根据我提供的视频字幕，撰写一篇逻辑严谨、排版精美的复盘文章。\n排版要求（参考截图风格）：\n标题：起一个具有行业深度、能引发思考的标题（例如：AI时代的价值悖论...）。\n引言：用简洁的语言描述视频的核心背景或一个矛盾点，带入感要强。\n分段标题：使用 Emoji + 明确的标题（如：挑战：... 思路：...）。\n核心内容：不要记流水账，要将字幕内容进行提炼。使用加粗来突出核心金句或关键结论。\n列表呈现：多用无序列表（*）来拆解细节，保证文章的“易读性”和“呼吸感”。\n总结/启示：文末给出几点深刻的总结或对未来的预判。\n"
       summaryRequirements = "请根据上述【排版要求】提供总结。必须使用 Markdown 语法。包含引言、Emoji分段标题、核心内容提炼（使用加粗突出核心金句或关键结论）、无序列表拆解细节、以及深刻的总结/启示。"
-    } else if (template === "study") {
-      roleDescription = "角色设定：你是一位擅长知识内化的“超级学霸笔记专家”。\n"
+} else if (template === "study") {
+      roleDescription = "角色设定：你是一位擅长知识内化的\"超级学霸笔记专家\"。\n"
       taskDescription = "任务描述：请根据我提供的视频字幕，整理出一份结构清晰、重点突出的学习笔记。\n要求：\n知识框架：先给出一个整体的知识框架或思维导图大纲。\n核心概念：提取视频中提到的核心概念、专业术语，并给出简短解释。\n重点内容：以层级结构（如：一、(一)、1.）梳理核心观点、论据或步骤。\n难点解析：如有，指出内容中的难点或易混淆点，并尝试澄清。\n复习建议：给出针对当前内容的复习或实践建议。\n"
       summaryRequirements = "请根据上述【要求】整理学习笔记。必须使用 Markdown 语法。包含整体知识框架、核心概念解释、分层级的重点梳理、难点解析以及复习建议。"
+    } else if (template === "english") {
+      roleDescription = "角色设定：你是一位资深的英语学习专家和内容分析师。\n"
+      taskDescription = "任务描述：请根据我提供的视频字幕，整理出一份实用的英语学习笔记。\n要求：\n高频词汇：提取视频中出现的高频实用单词或短语，给出中文释义和例句。\n常用短语：提取常见的固定搭配、短语动词或习惯表达。\n英文俗语：识别并解释视频中出现的英语习语、谚语或俚语。\n流行语解释：提取当下流行的网络用语或年轻人口头禅。\n原文保留：在原文字幕中，将上述学习要点对应的词汇用 **加粗** 标注。\n"
+      summaryRequirements = "请根据上述【要求】整理英语学习笔记。必须使用 Markdown 语法。包含高频词汇（带例句）、常用短语、英文俗语解释、流行语解释，并在原文字幕中将学习要点词汇 **加粗** 标注。"
     }
 
     return `${roleDescription}${taskDescription}
@@ -192,7 +201,12 @@ ${maxSubtitles}
   "title": "用一句话概括视频主题，不超过15个字",
   "summary": ${JSON.stringify(summaryRequirements)},
   "keywords": ["关键词1", "关键词2", "关键词3"],
-  "category": "从以下选项中选择一个最匹配的：编程/生活/思考/项目/娱乐/教育/技术"
+  "category": "从以下选项中选择一个最匹配的：编程/生活/思考/项目/娱乐/教育/技术",
+  "highFrequencyWords": [{"word": "单词", "translation": "中文释义", "example": "例句"}],
+  "commonPhrases": [{"phrase": "短语", "translation": "中文含义", "example": "例句"}],
+  "idioms": [{"idiom": "俗语", "meaning": "含义", "origin": "来源或背景"}],
+  "trendingPhrases": [{"phrase": "流行语", "meaning": "含义", "context": "使用场景"}],
+  "originalTextWithBold": "处理后的原文，将学习要点词汇用 **加粗** 标注"
 }
 
 请只返回合法的 JSON 对象。`
@@ -382,7 +396,12 @@ ${maxText}
         keywords: Array.isArray(result.keywords)
           ? result.keywords.slice(0, 5)
           : [],
-        category: this.validateCategory(result.category)
+        category: this.validateCategory(result.category),
+        highFrequencyWords: result.highFrequencyWords || [],
+        commonPhrases: result.commonPhrases || [],
+        idioms: result.idioms || [],
+        trendingPhrases: result.trendingPhrases || [],
+        originalTextWithBold: result.originalTextWithBold || ""
       }
     } catch (error) {
       console.warn("[AIService] 严格 JSON 解析失败，大模型回复可能被截断。尝试启用容错正则提取:", error)

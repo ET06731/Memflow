@@ -65,5 +65,5 @@ export interface AIApiConfig {
   apiKey: string
   baseUrl?: string
   model: string
-  bilibiliPromptTemplate?: "tech" | "study"
+  bilibiliPromptTemplate?: "tech" | "study" | "english"
 }

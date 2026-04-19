@@ -31,3 +31,6 @@ dist/
 
 # typescript
 .tsbuildinfo
+
+# promo-video
+promo-video/

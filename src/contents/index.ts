@@ -28,6 +28,7 @@ function buildBilibiliMarkdown(
     coins: string
     favorites: string
     publishDate: string
+    bvid?: string
   },
   subtitles: string
 ): string {
@@ -48,6 +49,11 @@ status: 🟢 待整理
 
   // 标题
   content += `# ${videoInfo.title}\n\n`
+
+  const videoEmbed = buildBilibiliEmbed(window.location.href, videoInfo.title)
+  if (videoEmbed) {
+    content += `${videoEmbed}\n\n`
+  }
 
   // 视频信息
   content += `## 📺 视频信息\n\n`
@@ -86,6 +92,37 @@ status: 🟢 待整理
 }
 
 /**
+ * 构建 B 站可嵌入播放器
+ */
+function buildBilibiliEmbed(videoUrl: string, title: string): string {
+  let bvid = ""
+  let page = "1"
+
+  try {
+    const url = new URL(videoUrl)
+    const bvMatch = url.pathname.match(/\/video\/(BV[\w]+)/)
+    bvid = bvMatch?.[1] || url.searchParams.get("bvid") || ""
+    page = url.searchParams.get("p") || "1"
+  } catch (_error) {
+    bvid = ""
+  }
+
+  if (!bvid) return ""
+
+  const safeTitle = title.replace(/"/g, "&quot;")
+
+  return `<iframe
+  width="720"
+  height="405"
+  src="https://player.bilibili.com/player.html?bvid=${bvid}&page=${page}"
+  title="${safeTitle}"
+  frameborder="0"
+  allow="fullscreen; autoplay"
+  allowfullscreen>
+</iframe>`
+}
+
+/**
  * 构建 B 站列表页（稍后看等）的 Markdown 内容
  */
 function buildBilibiliListMarkdown(conversation: Conversation): string {
@@ -121,6 +158,40 @@ status: 🟢 待整理
 }
 
 /**
+ * 构建 YouTube 可嵌入播放器
+ */
+function buildYouTubeEmbed(videoUrl: string, title: string): string {
+  let videoId = ""
+
+  try {
+    const url = new URL(videoUrl)
+    if (url.hostname.includes("youtu.be")) {
+      videoId = url.pathname.split("/").filter(Boolean)[0] || ""
+    } else if (url.pathname.startsWith("/shorts/")) {
+      videoId = url.pathname.split("/shorts/")[1]?.split("?")[0] || ""
+    } else {
+      videoId = url.searchParams.get("v") || ""
+    }
+  } catch (_error) {
+    videoId = ""
+  }
+
+  if (!videoId) return ""
+
+  const safeTitle = title.replace(/"/g, "&quot;")
+
+  return `<iframe
+  width="720"
+  height="405"
+  src="https://www.youtube.com/embed/${videoId}"
+  title="${safeTitle}"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+  allowfullscreen>
+</iframe>`
+}
+
+/**
  * 构建 YouTube 视频的 Markdown 内容
  */
 function buildYouTubeMarkdown(
@@ -152,6 +223,11 @@ status: 🟢 待整理
   let content = ""
 
   content += `# ${videoInfo.title}\n\n`
+
+  const videoEmbed = buildYouTubeEmbed(window.location.href, videoInfo.title)
+  if (videoEmbed) {
+    content += `${videoEmbed}\n\n`
+  }
 
   content += `## 📺 视频信息\n\n`
   content += `- **频道**: [${videoInfo.channelName}](${videoInfo.channelUrl})\n`
@@ -639,7 +715,7 @@ async function exportDirect() {
           showToast("正在获取字幕...", "warning")
           console.log("[Memflow YouTube] 正在获取字幕...")
 
-          const videoBaseUrl = window.location.href.split("?")[0]
+          const videoBaseUrl = window.location.href
           subtitles = await youtubeAdapter.getSubtitles(
             !!videoConfig?.saveSubtitlesWithTimestamp,
             videoBaseUrl
@@ -744,9 +820,6 @@ async function exportBiliBiliSmart() {
       return
     }
 
-    // 1. 获取 AI API 配置
-    const { aiApiConfig } = await chrome.storage.sync.get("aiApiConfig")
-
     // 2. 确认提示
     const confirmed = window.confirm(
       "🤖 B 站视频智能导出\n\n插件将提取视频字幕并使用 AI 生成深度结构化长文总结。\n\n💡 请确保视频已开启字幕功能（点击播放器底部控制栏的「字幕」或「AI 字幕」按钮）\n\n是否继续？"
@@ -785,6 +858,14 @@ async function exportBiliBiliSmart() {
     console.log("[Memflow Bilibili] 字幕获取成功，长度:", subtitles.length)
 
     // 4. 检查 API 配置
+    const [aiApiConfigResult, templateConfigResult] = await Promise.all([
+      chrome.storage.sync.get("aiApiConfig"),
+      chrome.storage.sync.get("templateConfig")
+    ])
+    const aiApiConfig = aiApiConfigResult.aiApiConfig
+    const templateConfig = templateConfigResult.templateConfig
+    const templateType = templateConfig?.bilibili?.templateType || "tech"
+
     if (!aiApiConfig?.enabled || !aiApiConfig?.apiKey) {
       hideVideoProgress()
       showToast("请在设置中配置 AI API", "error")
@@ -793,14 +874,13 @@ async function exportBiliBiliSmart() {
 
     showVideoProgress(2, "发送请求...")
 
-    // 5. 使用真实 API 生成总结
     const aiConfig: AIApiConfig = {
       enabled: aiApiConfig.enabled,
       provider: aiApiConfig.provider || "deepseek",
       apiKey: aiApiConfig.apiKey,
       baseUrl: aiApiConfig.baseUrl || "",
       model: aiApiConfig.model || "",
-      bilibiliPromptTemplate: aiApiConfig.bilibiliPromptTemplate || "tech"
+      bilibiliPromptTemplate: templateType as any
     }
 
     const aiResult = await AIService.summarize({
@@ -837,6 +917,11 @@ status: 🟢 待整理
     content += `# ${videoInfo.title}\n\n`
     content += `> \u{1F916} 由 Memflow AI 总结\n\n`
 
+    const videoEmbed = buildBilibiliEmbed(window.location.href, videoInfo.title)
+    if (videoEmbed) {
+      content += `${videoEmbed}\n\n`
+    }
+
     // 视频信息 (📺)
     content += `## \u{1F4FA} 视频信息\n\n`
     content += `- **UP主**: [${videoInfo.uploader}](${videoInfo.uploaderUrl})\n`
@@ -862,12 +947,65 @@ status: 🟢 待整理
     content += `## \u{1F3F7}\u{FE0F} 关键词\n\n`
     content += aiResult.keywords.join(", ") + "\n\n"
 
+    if (aiConfig.bilibiliPromptTemplate === "english") {
+      if (aiResult.highFrequencyWords && aiResult.highFrequencyWords.length > 0) {
+        content += `---\n\n`
+        content += `## 📚 高频词汇\n\n`
+        aiResult.highFrequencyWords.forEach((item) => {
+          content += `* **${item.word}** - ${item.translation}\n`
+          if (item.example) {
+            content += `  > 例句: ${item.example}\n`
+          }
+        })
+        content += "\n"
+      }
+
+      if (aiResult.commonPhrases && aiResult.commonPhrases.length > 0) {
+        content += `---\n\n`
+        content += `## 💬 常用短语\n\n`
+        aiResult.commonPhrases.forEach((item) => {
+          content += `* **${item.phrase}** - ${item.translation}\n`
+          if (item.example) {
+            content += `  > 例句: ${item.example}\n`
+          }
+        })
+        content += "\n"
+      }
+
+      if (aiResult.idioms && aiResult.idioms.length > 0) {
+        content += `---\n\n`
+        content += `##俗语 英文俗语\n\n`
+        aiResult.idioms.forEach((item) => {
+          content += `* **${item.idiom}** - ${item.meaning}\n`
+          if (item.origin) {
+            content += `  > 来源: ${item.origin}\n`
+          }
+        })
+        content += "\n"
+      }
+
+      if (aiResult.trendingPhrases && aiResult.trendingPhrases.length > 0) {
+        content += `---\n\n`
+        content += `## 🔥 流行语解释\n\n`
+        aiResult.trendingPhrases.forEach((item) => {
+          content += `* **${item.phrase}** - ${item.meaning}\n`
+          if (item.context) {
+            content += `  > 场景: ${item.context}\n`
+          }
+        })
+        content += "\n"
+      }
+    }
+
     // 如果用户开启了保存原文字幕，则追加
     // 原文字幕 (📑)
     if (topConfig?.saveSubtitles !== false && subtitles) {
       content += `---\n\n`
       content += `## \u{1F4D1} 字幕原文\n\n`
-      content += `${subtitles}\n\n`
+      const subtitleText = aiConfig.bilibiliPromptTemplate === "english" && aiResult.originalTextWithBold
+        ? aiResult.originalTextWithBold
+        : subtitles
+      content += `${subtitleText}\n\n`
     }
 
     // 底部信息 (📎)
@@ -936,10 +1074,10 @@ async function exportYouTubeSmart() {
       return
     }
 
-    const { aiApiConfig } = await chrome.storage.sync.get("aiApiConfig")
+    const { aiApiConfig: initialAiConfig } = await chrome.storage.sync.get("aiApiConfig")
 
     const confirmed = window.confirm(
-      "🤖 YouTube 视频智能导出\n\n插件将提取视频字幕并使用 AI 生成深度结构化长文总结。\n\n💡 重要：使用前请先开启字幕！\n   1. 点击视频播放器右下角的「CC」按钮\n   2. 选择中文字幕（如果有）\n   3. 等待字幕显示后再点击「确定」\n\n是否继续？"
+      "🤖 YouTube 视频智能导出\n\n插件将尝试直接提取视频完整字幕，并使用 AI 生成深度结构化长文总结。\n\n是否继续？"
     )
     if (!confirmed) return
 
@@ -954,23 +1092,23 @@ async function exportYouTubeSmart() {
     let subtitles = ""
 
     const withTimestamp = topConfig?.saveSubtitlesWithTimestamp === true
-    const videoBaseUrl = window.location.href.split("?")[0]
+    const videoBaseUrl = window.location.href
 
     subtitles = await youtubeAdapter.getSubtitles(withTimestamp, videoBaseUrl)
 
     if (!subtitles || subtitles.length === 0) {
       hideVideoProgress()
       showToast(
-        "❌ 未检测到字幕！请先：1) 点击视频播放器右下角「CC」按钮开启字幕；2) 等待字幕加载；3) 然后重新点击智能导出",
+        "❌ 未检测到完整字幕轨道。视频可能没有字幕，或页面数据还未加载完成，请稍后重试",
         "error"
       )
-      console.log("[Memflow YouTube] 未找到字幕 - 请确保视频已开启字幕功能")
+      console.log("[Memflow YouTube] 未找到完整字幕轨道")
       return
     }
 
     console.log("[Memflow YouTube] 字幕获取成功，长度:", subtitles.length)
 
-    if (!aiApiConfig?.enabled || !aiApiConfig?.apiKey) {
+    if (!initialAiConfig?.enabled || !initialAiConfig?.apiKey) {
       hideVideoProgress()
       showToast("请在设置中配置 AI API", "error")
       return
@@ -978,13 +1116,21 @@ async function exportYouTubeSmart() {
 
     showVideoProgress(2, "发送请求...")
 
+    const [aiApiConfigResult, templateConfigResult] = await Promise.all([
+      chrome.storage.sync.get("aiApiConfig"),
+      chrome.storage.sync.get("templateConfig")
+    ])
+    const aiApiConfig = aiApiConfigResult.aiApiConfig
+    const templateConfig = templateConfigResult.templateConfig
+    const templateType = templateConfig?.bilibili?.templateType || "tech"
+
     const aiConfig: AIApiConfig = {
       enabled: aiApiConfig.enabled,
       provider: aiApiConfig.provider || "deepseek",
       apiKey: aiApiConfig.apiKey,
       baseUrl: aiApiConfig.baseUrl || "",
       model: aiApiConfig.model || "",
-      bilibiliPromptTemplate: aiApiConfig.bilibiliPromptTemplate || "tech"
+      bilibiliPromptTemplate: templateType as any
     }
 
     const aiResult = await AIService.summarize({
@@ -1020,6 +1166,11 @@ status: 🟢 待整理
     content += `# ${videoInfo.title}\n\n`
     content += `> 🤖 由 Memflow AI 总结\n\n`
 
+    const videoEmbed = buildYouTubeEmbed(window.location.href, videoInfo.title)
+    if (videoEmbed) {
+      content += `${videoEmbed}\n\n`
+    }
+
     content += `## 📺 视频信息\n\n`
     content += `- **频道**: [${videoInfo.channelName}](${videoInfo.channelUrl})\n`
     if (videoInfo.publishDate) {
@@ -1045,10 +1196,63 @@ status: 🟢 待整理
     content += `## 🏷️ 关键词\n\n`
     content += aiResult.keywords.join(", ") + "\n\n"
 
+    if (aiConfig.bilibiliPromptTemplate === "english") {
+      if (aiResult.highFrequencyWords && aiResult.highFrequencyWords.length > 0) {
+        content += `---\n\n`
+        content += `## 📚 高频词汇\n\n`
+        aiResult.highFrequencyWords.forEach((item) => {
+          content += `* **${item.word}** - ${item.translation}\n`
+          if (item.example) {
+            content += `  > 例句: ${item.example}\n`
+          }
+        })
+        content += "\n"
+      }
+
+      if (aiResult.commonPhrases && aiResult.commonPhrases.length > 0) {
+        content += `---\n\n`
+        content += `## 💬 常用短语\n\n`
+        aiResult.commonPhrases.forEach((item) => {
+          content += `* **${item.phrase}** - ${item.translation}\n`
+          if (item.example) {
+            content += `  > 例句: ${item.example}\n`
+          }
+        })
+        content += "\n"
+      }
+
+      if (aiResult.idioms && aiResult.idioms.length > 0) {
+        content += `---\n\n`
+        content += `## 🏛️ 英文俗语\n\n`
+        aiResult.idioms.forEach((item) => {
+          content += `* **${item.idiom}** - ${item.meaning}\n`
+          if (item.origin) {
+            content += `  > 来源: ${item.origin}\n`
+          }
+        })
+        content += "\n"
+      }
+
+      if (aiResult.trendingPhrases && aiResult.trendingPhrases.length > 0) {
+        content += `---\n\n`
+        content += `## 🔥 流行语解释\n\n`
+        aiResult.trendingPhrases.forEach((item) => {
+          content += `* **${item.phrase}** - ${item.meaning}\n`
+          if (item.context) {
+            content += `  > 场景: ${item.context}\n`
+          }
+        })
+        content += "\n"
+      }
+    }
+
     if (topConfig?.saveSubtitles !== false && subtitles) {
       content += `---\n\n`
       content += `## 📄 字幕原文\n\n`
-      content += `${subtitles}\n\n`
+      const subtitleText = aiConfig.bilibiliPromptTemplate === "english" && aiResult.originalTextWithBold
+        ? aiResult.originalTextWithBold
+        : subtitles
+      content += `${subtitleText}\n\n`
     }
 
     content += `---\n\n`

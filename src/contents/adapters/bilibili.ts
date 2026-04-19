@@ -80,11 +80,16 @@ export class BiliBiliAdapter extends BaseAdapter {
 
     console.log("[Memflow Bilibili] 视频信息:", videoInfo)
 
+    const videoEmbed = videoInfo.bvid
+      ? `<iframe width="560" height="315" src="https://player.bilibili.com/player.html?bvid=${videoInfo.bvid}&page=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+      : ""
+
     const videoMeta = [
       `# ${videoInfo.title}`,
       "",
       "---",
       "",
+      videoEmbed ? videoEmbed + "\n" : "",
       "**UP 主**: " + (videoInfo.uploader || "未知"),
       "**发布时间**: " + (videoInfo.publishDate || "未知"),
       "**播放量**: " + videoInfo.views,

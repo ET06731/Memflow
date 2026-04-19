@@ -24,8 +24,19 @@ export class MarkdownBuilder {
 
     // 添加自定义规则来保留代码块，但保持表格转换
     this.turndown.keep(["pre", "code"])
+    this.turndown.keep((node) => {
+      if (node.nodeType !== 1) return false
+      const el = node as HTMLElement
+      if (el.tagName.toLowerCase() === "iframe") {
+        const src = el.getAttribute("src") || ""
+        if (src.includes("youtube.com/embed") || src.includes("bilibili.com/player")) {
+          return true
+        }
+      }
+      return false
+    })
 
-    // ========== 处理 LaTeX 公式 ==========
+    this.turndown.remove("button")
     this.turndown.addRule("math", {
       filter: (node) => {
         if (node.nodeType !== 1) return false

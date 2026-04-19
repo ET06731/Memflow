@@ -6,8 +6,9 @@ import type { AIApiConfig, ObsidianConfig } from "./types/index"
 interface TemplateConfig {
   bilibili: {
     enabled: boolean
-    templateType: "tech" | "study" | "coding" | "news" | "custom"
+    templateType: "tech" | "study" | "english" | "coding" | "news" | "custom"
     customTemplate: string
+    includeOriginalSubtitles: boolean
     includeTimestamp: boolean
     maxSummaryLength: number
     outputFormat: "markdown" | "obsidian-callout" | "json"
@@ -138,6 +139,7 @@ function Options() {
       enabled: true,
       templateType: "tech",
       customTemplate: "",
+      includeOriginalSubtitles: true,
       includeTimestamp: false,
       maxSummaryLength: 2000,
       outputFormat: "markdown"
@@ -166,7 +168,18 @@ function Options() {
       (data) => {
         if (data.obsidianConfig) setConfig(data.obsidianConfig)
         if (data.aiApiConfig) setAiConfig(data.aiApiConfig)
-        if (data.templateConfig) setTemplateConfig(data.templateConfig)
+        if (data.templateConfig) {
+          setTemplateConfig({
+            bilibili: {
+              ...templateConfig.bilibili,
+              ...data.templateConfig.bilibili
+            },
+            chat: {
+              ...templateConfig.chat,
+              ...data.templateConfig.chat
+            }
+          })
+        }
       }
     )
   }, [])
@@ -793,6 +806,7 @@ function Options() {
                     options={[
                       { id: "tech", name: "💻 科技专栏" },
                       { id: "study", name: "📚 知识梳理" },
+                      { id: "english", name: "🌐 英语学习" },
                       { id: "coding", name: "🔥 代码教程" },
                       { id: "news", name: "📰 资讯简报" },
                       { id: "custom", name: "✏️ 自定义模板" }
