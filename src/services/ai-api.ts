@@ -29,6 +29,12 @@ const PROVIDERS = {
     defaultModel: "gemini-1.5-flash",
     models: ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"]
   },
+  local: {
+    name: "本地 AI",
+    baseUrl: "http://127.0.0.1:11434/v1",
+    defaultModel: "qwen2.5:7b",
+    models: []
+  },
   custom: {
     name: "自定义",
     baseUrl: "",
@@ -99,18 +105,73 @@ export class AIService {
   }
 
   /**
+   * 获取本地 AI 模型列表
+   * 支持 Ollama (GET /api/tags) 和 OpenAI-compatible API (GET /v1/models)
+   */
+  static async fetchLocalModels(baseUrl: string): Promise<string[]> {
+    if (!baseUrl) {
+      return []
+    }
+
+    const authHeaders = {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer local"
+    }
+
+    try {
+      // Ollama format: GET /api/tags -> { models: [{ name: "qwen2.5:7b" }] }
+      const ollamaResponse = await fetch(`${baseUrl}/api/tags`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      })
+
+      if (ollamaResponse.ok) {
+        const data = await ollamaResponse.json()
+        if (data.models && Array.isArray(data.models)) {
+          return data.models.map((m: { name: string }) => m.name)
+        }
+      }
+
+      // OpenAI-compatible format: GET /v1/models -> { data: [{ id: "model-name" }] }
+      const openaiResponse = await fetch(`${baseUrl}/v1/models`, {
+        method: "GET",
+        headers: authHeaders
+      })
+
+      if (openaiResponse.ok) {
+        const data = await openaiResponse.json()
+        if (data.data && Array.isArray(data.data)) {
+          return data.data.map((m: { id: string }) => m.id)
+        }
+      }
+
+      return []
+    } catch (error) {
+      console.warn("[AIService] 获取本地模型列表失败:", error)
+      return []
+    }
+  }
+
+  /**
    * 总结视频内容
    */
   static async summarize(options: SummarizeOptions): Promise<SummarizeResult> {
     const { subtitles, videoInfo, config } = options
 
-    if (!config.enabled || !config.apiKey) {
-      throw new Error("请在设置中配置 AI API")
+    const isLocalProvider = config.provider === "local"
+
+    if (!config.enabled) {
+      throw new Error("AI API 未启用")
+    }
+
+    if (!isLocalProvider && !config.apiKey) {
+      throw new Error("请在设置中配置 AI API Key")
     }
 
     const provider = PROVIDERS[config.provider] || PROVIDERS.openai
     const baseUrl = config.baseUrl || provider.baseUrl
     const model = config.model || provider.defaultModel
+    const apiKey = isLocalProvider ? config.apiKey || "local" : config.apiKey
 
     // 构建 prompt
     const prompt = this.buildPrompt(subtitles, videoInfo, config.bilibiliPromptTemplate)
@@ -121,7 +182,8 @@ export class AIService {
       const result = await this.callAPI({
         baseUrl,
         model,
-        apiKey: config.apiKey,
+        apiKey,
+        isLocalProvider,
         prompt
       })
 
@@ -218,13 +280,20 @@ ${maxSubtitles}
   static async generateMetadata(options: ChatMetadataOptions): Promise<SummarizeResult> {
     const { conversationText, config } = options
 
-    if (!config.enabled || !config.apiKey) {
-      throw new Error("AI API 未启用或 API Key 未配置")
+    const isLocalProvider = config.provider === "local"
+
+    if (!config.enabled) {
+      throw new Error("AI API 未启用")
+    }
+
+    if (!isLocalProvider && !config.apiKey) {
+      throw new Error("请在设置中配置 AI API Key")
     }
 
     const provider = PROVIDERS[config.provider] || PROVIDERS.openai
     const baseUrl = config.baseUrl || provider.baseUrl
     const model = config.model || provider.defaultModel
+    const apiKey = isLocalProvider ? config.apiKey || "local" : config.apiKey
 
     // 构建针对聊天的 prompt
     const prompt = this.buildChatPrompt(conversationText)
@@ -235,7 +304,8 @@ ${maxSubtitles}
       const result = await this.callAPI({
         baseUrl,
         model,
-        apiKey: config.apiKey,
+        apiKey,
+        isLocalProvider,
         prompt
       })
 
@@ -269,16 +339,17 @@ ${maxText}
 请只返回合法的 JSON 对象。`
   }
 
-  /**
+/**
    * 调用 API
    */
   private static async callAPI(params: {
     baseUrl: string
     model: string
     apiKey: string
-    prompt: string
+    isLocalProvider: boolean
   }): Promise<string> {
-    const { baseUrl, model, apiKey, prompt } = params
+    const { baseUrl, model, apiKey, isLocalProvider } = params
+    const prompt = params.prompt
 
     // 根据不同提供商构建请求
     let url: string
@@ -322,13 +393,19 @@ ${maxText}
       }
     }
 
+    const isGemini = baseUrl.includes("generativelanguage.googleapis.com")
+
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(baseUrl.includes("generativelanguage.googleapis.com")
+        ...(isGemini
           ? {}
-          : { Authorization: `Bearer ${apiKey}` })
+          : !isLocalProvider
+            ? { Authorization: `Bearer ${apiKey}` }
+            : apiKey
+              ? { Authorization: `Bearer ${apiKey}` }
+              : {})
       },
       body: JSON.stringify(body)
     })

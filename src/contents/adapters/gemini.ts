@@ -12,10 +12,7 @@ export class GeminiAdapter extends BaseAdapter {
   selectors: SelectorConfig = selectors.platforms.gemini as SelectorConfig
 
   detectPlatform(): boolean {
-    return (
-      window.location.host.includes("gemini.google.com") ||
-      window.location.host.includes("aistudio.google.com")
-    )
+    return window.location.host.includes("gemini.google.com")
   }
 
   extractConversation(): Conversation {

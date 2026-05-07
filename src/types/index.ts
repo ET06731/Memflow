@@ -61,7 +61,7 @@ export interface ObsidianConfig {
  */
 export interface AIApiConfig {
   enabled: boolean
-  provider: "openai" | "deepseek" | "kimi" | "gemini" | "custom"
+  provider: "openai" | "deepseek" | "kimi" | "gemini" | "custom" | "local"
   apiKey: string
   baseUrl?: string
   model: string

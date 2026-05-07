@@ -57,6 +57,7 @@ export function detectSmartClipAdapter(): IAdapter | null {
     "kimi.ai",
     "www.kimi.com",
     "gemini.google.com",
+    "aistudio.google.com",
     "www.doubao.com",
     "bilibili.com",
     "www.bilibili.com",

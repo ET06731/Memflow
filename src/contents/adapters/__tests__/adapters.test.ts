@@ -81,10 +81,10 @@ describe("Platform Adapters", () => {
       expect(adapter.detectPlatform()).toBe(true)
     })
 
-    it("应该检测 AI Studio 域名", () => {
+    it("不应该检测 AI Studio 域名", () => {
       window.location.href = "https://aistudio.google.com/"
       const adapter = createGeminiAdapter()
-      expect(adapter.detectPlatform()).toBe(true)
+      expect(adapter.detectPlatform()).toBe(false)
     })
 
     it("应该有正确的平台名称", () => {

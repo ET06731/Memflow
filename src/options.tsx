@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import iconUrl from "url:../assets/icon.png"
 
 import type { AIApiConfig, ObsidianConfig } from "./types/index"
+import { AIService } from "./services/ai-api"
 
 interface TemplateConfig {
   bilibili: {
@@ -153,12 +154,17 @@ function Options() {
     "general" | "template" | "ai" | "about"
   >("general")
   const [saved, setSaved] = useState(false)
+  const [localModels, setLocalModels] = useState<string[]>([])
+  const [isLoadingModels, setIsLoadingModels] = useState(false)
+  const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle")
+  const [testMessage, setTestMessage] = useState("")
 
   const providers = [
     { id: "openai", name: "OpenAI", defaultModel: "gpt-3.5-turbo" },
     { id: "deepseek", name: "DeepSeek", defaultModel: "deepseek-chat" },
     { id: "kimi", name: "Kimi", defaultModel: "moonshot-v1-8k" },
     { id: "gemini", name: "Gemini", defaultModel: "gemini-1.5-flash" },
+    { id: "local", name: "本地 AI", defaultModel: "qwen2.5:7b" },
     { id: "custom", name: "自定义", defaultModel: "" }
   ]
 
@@ -183,6 +189,30 @@ function Options() {
       }
     )
   }, [])
+
+  useEffect(() => {
+    if (aiConfig.provider === "local") {
+      const baseUrl = aiConfig.baseUrl || "http://127.0.0.1:1234/v1"
+      console.log("[Options] Fetching local models from:", baseUrl)
+      setIsLoadingModels(true)
+      AIService.fetchLocalModels(baseUrl)
+        .then((models) => {
+          console.log("[Options] Got models:", models)
+          setLocalModels(models)
+          if (models.length > 0 && !aiConfig.model) {
+            setAiConfig({ ...aiConfig, model: models[0] })
+          }
+        })
+        .catch((err) => {
+          console.error("[Options] Failed to fetch models:", err)
+        })
+        .finally(() => {
+          setIsLoadingModels(false)
+        })
+    } else {
+      setLocalModels([])
+    }
+  }, [aiConfig.provider, aiConfig.baseUrl])
 
   const saveConfig = () => {
     chrome.storage.sync.set(
@@ -933,14 +963,18 @@ function Options() {
                           setAiConfig({
                             ...aiConfig,
                             provider: val as AIApiConfig["provider"],
-                            model: provider?.defaultModel || ""
+                            model: provider?.defaultModel || "",
+                            baseUrl: val === "local" ? "http://127.0.0.1:1234/v1" : aiConfig.baseUrl
                           })
                         }}
                       />
                     </div>
                     <div className="form-group">
                       <label className="form-label">
-                        {t.aiApiKey} <span style={{ color: "#ef4444" }}>*</span>
+                        {t.aiApiKey}
+                        {aiConfig.provider !== "local" && (
+                          <span style={{ color: "#ef4444" }}> *</span>
+                        )}
                       </label>
                       <input
                         type="password"
@@ -949,9 +983,16 @@ function Options() {
                         onChange={(e) =>
                           setAiConfig({ ...aiConfig, apiKey: e.target.value })
                         }
+                        placeholder={
+                          aiConfig.provider === "local"
+                            ? lang === "zh"
+                              ? "本地 AI 可留空"
+                              : "Optional for local AI"
+                            : undefined
+                        }
                       />
                     </div>
-                    {aiConfig.provider === "custom" && (
+                    {(aiConfig.provider === "custom" || aiConfig.provider === "local") && (
                       <div className="form-group">
                         <label className="form-label">{t.aiApiBaseUrl}</label>
                         <input
@@ -964,21 +1005,121 @@ function Options() {
                               baseUrl: e.target.value
                             })
                           }
-                          placeholder="https://api.your-provider.com/v1"
+                          placeholder={
+                            aiConfig.provider === "local"
+                              ? "http://127.0.0.1:11434/v1"
+                              : "https://api.your-provider.com/v1"
+                          }
                         />
                       </div>
                     )}
                     <div className="form-group">
-                      <label className="form-label">{t.aiApiModel}</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={aiConfig.model}
-                        onChange={(e) =>
-                          setAiConfig({ ...aiConfig, model: e.target.value })
-                        }
-                        placeholder="gpt-4o / deepseek-reasoner"
-                      />
+                      <label className="form-label">
+                        {t.aiApiModel}
+                        {aiConfig.provider === "local" && isLoadingModels && (
+                          <span style={{ color: "#888", marginLeft: 8 }}>
+                            {lang === "zh" ? "(加载中...)": "(loading...)"}
+                          </span>
+                        )}
+                      </label>
+                      {aiConfig.provider === "local" && localModels.length > 0 ? (
+                        <select
+                          className="form-input"
+                          value={aiConfig.model}
+                          onChange={(e) =>
+                            setAiConfig({ ...aiConfig, model: e.target.value })
+                          }
+                        >
+                          {localModels.map((m) => (
+                            <option key={m} value={m}>
+                              {m}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={aiConfig.model}
+                          onChange={(e) =>
+                            setAiConfig({ ...aiConfig, model: e.target.value })
+                          }
+                          placeholder={
+                            aiConfig.provider === "local"
+                              ? "qwen2.5:7b / llama3.1:8b"
+                              : "gpt-4o / deepseek-reasoner"
+                          }
+                        />
+                      )}
+                    </div>
+
+                    <div style={{ marginTop: 16, display: "flex", gap: 12, alignItems: "center" }}>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!aiConfig.model) {
+                            setTestStatus("error")
+                            setTestMessage(lang === "zh" ? "请先选择或输入模型名称" : "Please enter model name first")
+                            return
+                          }
+                          setTestStatus("testing")
+                          setTestMessage("")
+                          try {
+                            const baseUrl = aiConfig.baseUrl || (aiConfig.provider === "local" ? "http://127.0.0.1:11434/v1" : "")
+                            const response = await fetch(`${baseUrl}/chat/completions`, {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                ...(aiConfig.provider !== "local" && aiConfig.apiKey
+                                  ? { Authorization: `Bearer ${aiConfig.apiKey}` }
+                                  : {})
+                              },
+                              body: JSON.stringify({
+                                model: aiConfig.model,
+                                messages: [{ role: "user", content: "Hi" }],
+                                stream: false
+                              })
+                            })
+                            if (!response.ok) {
+                              const errorText = await response.text()
+                              throw new Error(`${response.status}: ${errorText}`)
+                            }
+                            const data = await response.json()
+                            if (data.choices?.[0]?.message?.content) {
+                              setTestStatus("success")
+                              setTestMessage(lang === "zh" ? "连接成功！" : "Connection successful!")
+                            } else {
+                              setTestStatus("error")
+                              setTestMessage(lang === "zh" ? "连接成功但模型返回空响应" : "Connected but empty response")
+                            }
+                          } catch (error) {
+                            setTestStatus("error")
+                            setTestMessage(error.message || (lang === "zh" ? "连接失败" : "Connection failed"))
+                          }
+                        }}
+                        style={{
+                          padding: "8px 16px",
+                          background: testStatus === "testing" ? "#666" : testStatus === "success" ? "#10b981" : testStatus === "error" ? "#ef4444" : "#f59e0b",
+                          color: testStatus !== "idle" && testStatus !== "testing" ? "#fff" : "#000",
+                          border: "none",
+                          borderRadius: 6,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: testStatus === "testing" ? "wait" : "pointer"
+                        }}
+                      >
+                        {testStatus === "testing"
+                          ? (lang === "zh" ? "测试中..." : "Testing...")
+                          : (lang === "zh" ? "测试连接" : "Test Connection")}
+                      </button>
+                      {testMessage && (
+                        <span style={{
+                          fontSize: 12,
+                          color: testStatus === "success" ? "#10b981" : testStatus === "error" ? "#ef4444" : "#888"
+                        }}>
+                          {testMessage}
+                        </span>
+                      )}
                     </div>
                   </>
                 )}
