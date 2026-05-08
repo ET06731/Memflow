@@ -174,7 +174,7 @@ src/
 
 如果你觉得这个项目对你有帮助，欢迎请作者喝杯咖啡！
 
-<img src="docs/1778172068216.jpg" alt="收款码" width="300" />
+<img src="docs/donate.jpg" alt="收款码" width="300" />
 
 ## 📄 许可证
 
