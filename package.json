@@ -1,7 +1,7 @@
 {
   "name": "memflow",
   "displayName": "Memflow - 一键剪藏视频与网页内容",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "一键剪藏视频、网页内容，并用 AI 生成总结",
   "author": "Memflow Team",
   "scripts": {
