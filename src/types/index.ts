@@ -67,3 +67,12 @@ export interface AIApiConfig {
   model: string
   bilibiliPromptTemplate?: "tech" | "study" | "english"
 }
+
+export interface MemflowHelperConfig {
+  enabled: boolean
+  baseUrl: string
+  asrProvider: "qwen3-asr-gguf" | "faster-whisper"
+  asrModel: string
+  pollIntervalMs: number
+  timeoutMs: number
+}

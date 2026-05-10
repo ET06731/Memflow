@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from "react"
 import iconUrl from "url:../assets/icon.png"
 
-import type { AIApiConfig, ObsidianConfig } from "./types/index"
+import type { AIApiConfig, MemflowHelperConfig, ObsidianConfig } from "./types/index"
 import { AIService } from "./services/ai-api"
+import { MemflowHelperService } from "./services/memflow-helper"
+import {
+  buildFolderHistory,
+  DEFAULT_FOLDER_HISTORY_KEY,
+  normalizeFolderPath
+} from "./utils/folder-history"
 
 interface TemplateConfig {
   bilibili: {
@@ -111,6 +117,66 @@ function detectLanguage(): Lang {
   return "en"
 }
 
+function normalizeBaseUrl(baseUrl: string): string {
+  return baseUrl.replace(/\/+$/, "")
+}
+
+function normalizeModelName(model: string): string {
+  return model.replace(/^models\//, "")
+}
+
+async function fetchOpenAICompatibleModels(
+  baseUrl: string,
+  apiKey?: string
+): Promise<string[]> {
+  const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
+  const baseRootUrl = normalizedBaseUrl.replace(/\/v1$/, "")
+  const headers: HeadersInit = {
+    "Content-Type": "application/json"
+  }
+
+  if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`
+  }
+
+  const candidateUrls = [
+    `${normalizedBaseUrl}/models`,
+    `${baseRootUrl}/v1/models`
+  ].filter((url, index, arr) => arr.indexOf(url) === index)
+
+  for (const url of candidateUrls) {
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers
+      })
+
+      if (!response.ok) {
+        continue
+      }
+
+      const data = await response.json()
+      const rawModels = Array.isArray(data?.data)
+        ? data.data.map((item: { id?: string }) => item.id).filter(Boolean)
+        : Array.isArray(data?.models)
+          ? data.models.map((item: { id?: string; name?: string }) => item.id || item.name).filter(Boolean)
+          : []
+
+      const models = rawModels
+        .map((name: string) => normalizeModelName(name))
+        .filter((name: string) => name.length > 0)
+
+      if (models.length > 0) {
+        return models
+      }
+    } catch (error) {
+      console.warn("[Options] 获取远程模型列表失败:", error)
+    }
+  }
+
+  return []
+}
+
 function Options() {
   const lang = detectLanguage()
   const t = i18n[lang]
@@ -158,6 +224,17 @@ function Options() {
   const [isLoadingModels, setIsLoadingModels] = useState(false)
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle")
   const [testMessage, setTestMessage] = useState("")
+  const [helperConfig, setHelperConfig] = useState<MemflowHelperConfig>({
+    enabled: false,
+    baseUrl: "http://127.0.0.1:8000",
+    asrProvider: "qwen3-asr-gguf",
+    asrModel: "qwen3-0.6b",
+    pollIntervalMs: 1500,
+    timeoutMs: 300000
+  })
+  const [helperStatus, setHelperStatus] = useState<"idle" | "testing" | "success" | "error">("idle")
+  const [helperMessage, setHelperMessage] = useState("")
+  const [folderHistory, setFolderHistory] = useState<string[]>([])
 
   const providers = [
     { id: "openai", name: "OpenAI", defaultModel: "gpt-3.5-turbo" },
@@ -168,12 +245,35 @@ function Options() {
     { id: "custom", name: "自定义", defaultModel: "" }
   ]
 
+  const defaultBaseUrls: Record<string, string> = {
+    openai: "https://api.openai.com/v1",
+    deepseek: "https://api.deepseek.com/v1",
+    kimi: "https://api.moonshot.cn/v1",
+    gemini: "https://generativelanguage.googleapis.com/v1",
+    local: "http://127.0.0.1:11434/v1",
+    custom: ""
+  }
+
   useEffect(() => {
     chrome.storage.sync.get(
-      ["obsidianConfig", "aiApiConfig", "templateConfig"],
+      [
+        "obsidianConfig",
+        "aiApiConfig",
+        "templateConfig",
+        "memflowHelperConfig",
+        DEFAULT_FOLDER_HISTORY_KEY
+      ],
       (data) => {
-        if (data.obsidianConfig) setConfig(data.obsidianConfig)
+        if (data.obsidianConfig) {
+          setConfig({
+            ...data.obsidianConfig,
+            defaultFolder: normalizeFolderPath(
+              data.obsidianConfig.defaultFolder || ""
+            )
+          })
+        }
         if (data.aiApiConfig) setAiConfig(data.aiApiConfig)
+        if (data.memflowHelperConfig) setHelperConfig(data.memflowHelperConfig)
         if (data.templateConfig) {
           setTemplateConfig({
             bilibili: {
@@ -185,6 +285,11 @@ function Options() {
               ...data.templateConfig.chat
             }
           })
+        }
+        if (Array.isArray(data[DEFAULT_FOLDER_HISTORY_KEY])) {
+          setFolderHistory(
+            buildFolderHistory("", data[DEFAULT_FOLDER_HISTORY_KEY])
+          )
         }
       }
     )
@@ -199,8 +304,21 @@ function Options() {
         .then((models) => {
           console.log("[Options] Got models:", models)
           setLocalModels(models)
-          if (models.length > 0 && !aiConfig.model) {
-            setAiConfig({ ...aiConfig, model: models[0] })
+          if (models.length > 0) {
+            setAiConfig((prev) => {
+              if (prev.provider !== "local") {
+                return prev
+              }
+
+              if (models.includes(prev.model)) {
+                return prev
+              }
+
+              return {
+                ...prev,
+                model: models[0]
+              }
+            })
           }
         })
         .catch((err) => {
@@ -215,13 +333,26 @@ function Options() {
   }, [aiConfig.provider, aiConfig.baseUrl])
 
   const saveConfig = () => {
+    const normalizedConfig = {
+      ...config,
+      defaultFolder: normalizeFolderPath(config.defaultFolder)
+    }
+    const nextFolderHistory = buildFolderHistory(
+      normalizedConfig.defaultFolder,
+      folderHistory
+    )
+
     chrome.storage.sync.set(
       {
-        obsidianConfig: config,
+        obsidianConfig: normalizedConfig,
         aiApiConfig: aiConfig,
-        templateConfig: templateConfig
+        memflowHelperConfig: helperConfig,
+        templateConfig: templateConfig,
+        [DEFAULT_FOLDER_HISTORY_KEY]: nextFolderHistory
       },
       () => {
+        setConfig(normalizedConfig)
+        setFolderHistory(nextFolderHistory)
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
       }
@@ -229,6 +360,10 @@ function Options() {
   }
 
   const isValid = config.vaultName.trim().length > 0
+  const folderHistoryOptions = buildFolderHistory(
+    config.defaultFolder,
+    folderHistory
+  )
 
   // Custom Select Component for better UI
   const CustomSelect = ({
@@ -506,6 +641,27 @@ function Options() {
           outline: none;
           background: rgba(245, 158, 11, 0.02);
         }
+        .folder-history-select {
+          margin-top: 8px;
+        }
+        .folder-history-select option {
+          background: #11131a;
+          color: #e5e5e5;
+        }
+        .folder-history-select {
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          padding-right: 36px;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f4f4f5' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 14px center;
+          background-size: 12px;
+        }
+        .folder-history-select option {
+          background: #252525;
+          color: #f4f4f5;
+        }
         .input-hint {
           display: block;
           font-size: 12px;
@@ -657,15 +813,21 @@ function Options() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">{t.defaultFolder}</label>
-                  <input
-                    type="text"
-                    className="form-input"
+                  <select
+                    className="form-input folder-history-select"
                     value={config.defaultFolder}
                     onChange={(e) =>
-                      setConfig({ ...config, defaultFolder: e.target.value })
-                    }
-                    placeholder={t.defaultFolderPlaceholder}
-                  />
+                      setConfig({
+                        ...config,
+                        defaultFolder: normalizeFolderPath(e.target.value)
+                      })
+                    }>
+                    {folderHistoryOptions.map((folder) => (
+                      <option key={folder} value={folder} title={folder}>
+                        {folder}
+                      </option>
+                    ))}
+                  </select>
                   <span className="input-hint">{t.defaultFolderHint}</span>
                 </div>
                 <div className="form-group">
@@ -960,15 +1122,6 @@ function Options() {
                         }))}
                         onChange={(val) => {
                           const provider = providers.find((p) => p.id === val)
-                          // 根据 provider 类型设置默认的 baseUrl
-                          const defaultBaseUrls: Record<string, string> = {
-                            openai: "https://api.openai.com/v1",
-                            deepseek: "https://api.deepseek.com/v1",
-                            kimi: "https://api.moonshot.cn/v1",
-                            gemini: "https://generativelanguage.googleapis.com/v1",
-                            local: "http://127.0.0.1:11434/v1",
-                            custom: ""
-                          }
                           const newBaseUrl = defaultBaseUrls[val] || ""
                           setAiConfig({
                             ...aiConfig,
@@ -977,6 +1130,26 @@ function Options() {
                             baseUrl: newBaseUrl
                           })
                         }}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">
+                        {t.aiApiBaseUrl}
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={aiConfig.baseUrl}
+                        onChange={(e) =>
+                          setAiConfig({
+                            ...aiConfig,
+                            baseUrl: e.target.value
+                          })
+                        }
+                        placeholder={
+                          defaultBaseUrls[aiConfig.provider] ||
+                          "https://api.your-provider.com/v1"
+                        }
                       />
                     </div>
                     <div className="form-group">
@@ -1002,27 +1175,6 @@ function Options() {
                         }
                       />
                     </div>
-                    {(aiConfig.provider === "custom" || aiConfig.provider === "local") && (
-                      <div className="form-group">
-                        <label className="form-label">{t.aiApiBaseUrl}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={aiConfig.baseUrl}
-                          onChange={(e) =>
-                            setAiConfig({
-                              ...aiConfig,
-                              baseUrl: e.target.value
-                            })
-                          }
-                          placeholder={
-                            aiConfig.provider === "local"
-                              ? "http://127.0.0.1:11434/v1"
-                              : "https://api.your-provider.com/v1"
-                          }
-                        />
-                      </div>
-                    )}
                     <div className="form-group">
                       <label className="form-label">
                         {t.aiApiModel}
@@ -1075,7 +1227,9 @@ function Options() {
                           setTestStatus("testing")
                           setTestMessage("")
                           try {
-                            const baseUrl = aiConfig.baseUrl || (aiConfig.provider === "local" ? "http://127.0.0.1:11434/v1" : "")
+                            const providerConfig = AIService.getProviderConfig(aiConfig.provider)
+                            const baseUrl =
+                              aiConfig.baseUrl || providerConfig.baseUrl
                             if (!baseUrl) {
                               setTestStatus("error")
                               setTestMessage(lang === "zh" ? "请填写 Base URL" : "Please enter Base URL")
@@ -1086,6 +1240,46 @@ function Options() {
                               setTestMessage(lang === "zh" ? "请填写 API Key" : "Please enter API Key")
                               return
                             }
+
+                            const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
+                            const normalizedDefaultBaseUrl = normalizeBaseUrl(providerConfig.baseUrl)
+                            const shouldFetchRemoteModels =
+                              aiConfig.provider === "local" ||
+                              aiConfig.provider === "custom" ||
+                              normalizedBaseUrl !== normalizedDefaultBaseUrl
+
+                            let availableModels = providerConfig.models.map(normalizeModelName)
+
+                            if (aiConfig.provider === "local") {
+                              const localModelList = localModels.length
+                                ? localModels
+                                : await AIService.fetchLocalModels(baseUrl)
+                              availableModels = localModelList.map(normalizeModelName)
+                            } else if (shouldFetchRemoteModels) {
+                              const remoteModels = await fetchOpenAICompatibleModels(
+                                baseUrl,
+                                aiConfig.provider === "custom" || normalizedBaseUrl !== normalizedDefaultBaseUrl
+                                  ? aiConfig.apiKey
+                                  : undefined
+                              )
+                              if (remoteModels.length > 0) {
+                                availableModels = remoteModels
+                              }
+                            }
+
+                            if (!availableModels.includes(normalizeModelName(aiConfig.model))) {
+                              const modelListText = availableModels.length
+                                ? availableModels.slice(0, 20).join(", ")
+                                : lang === "zh"
+                                  ? "未获取到可用模型列表"
+                                  : "No available model list"
+                              throw new Error(
+                                lang === "zh"
+                                  ? `模型未通过校验: ${aiConfig.model}。可用模型: ${modelListText}`
+                                  : `Model validation failed: ${aiConfig.model}. Available models: ${modelListText}`
+                              )
+                            }
+
                             const response = await fetch(`${baseUrl}/chat/completions`, {
                               method: "POST",
                               headers: {
@@ -1119,7 +1313,9 @@ function Options() {
                             }
                           } catch (error) {
                             setTestStatus("error")
-                            setTestMessage(error.message || (lang === "zh" ? "连接失败" : "Connection failed"))
+                            setTestMessage(error instanceof Error
+                              ? error.message
+                              : (lang === "zh" ? "连接失败" : "Connection failed"))
                           }
                         }}
                         style={{
@@ -1145,6 +1341,175 @@ function Options() {
                           {testMessage}
                         </span>
                       )}
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: 28,
+                        paddingTop: 20,
+                        borderTop: "1px solid rgba(245, 158, 11, 0.15)"
+                      }}>
+                      <h3
+                        style={{
+                          margin: "0 0 14px 0",
+                          fontSize: 18,
+                          color: "#f3efe5"
+                        }}>
+                        {lang === "zh" ? "Memflow Helper 本地转写" : "Memflow Helper Local Transcription"}
+                      </h3>
+                      <div className="form-group">
+                        <label className="checkbox-label">
+                          <input
+                            type="checkbox"
+                            className="checkbox-input"
+                            checked={helperConfig.enabled}
+                            onChange={(e) =>
+                              setHelperConfig({ ...helperConfig, enabled: e.target.checked })
+                            }
+                          />
+                          <div className="checkbox-text">
+                            <span className="checkbox-title">
+                              {lang === "zh" ? "启用本地 Helper 兜底转写" : "Enable local Helper fallback transcription"}
+                            </span>
+                            <span className="checkbox-desc">
+                              {lang === "zh"
+                                ? "视频页面拿不到原生字幕时，改为提交当前 URL 到本地 Helper 转写"
+                                : "When native subtitles are unavailable, submit the current video URL to the local Helper"}
+                            </span>
+                          </div>
+                        </label>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">
+                          {lang === "zh" ? "Helper Base URL" : "Helper Base URL"}
+                        </label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={helperConfig.baseUrl}
+                          onChange={(e) =>
+                            setHelperConfig({ ...helperConfig, baseUrl: e.target.value })
+                          }
+                          placeholder="http://127.0.0.1:8000"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <CustomSelect
+                          label={lang === "zh" ? "ASR Provider" : "ASR Provider"}
+                          value={helperConfig.asrProvider}
+                          options={[
+                            { id: "qwen3-asr-gguf", name: "qwen3-asr-gguf" },
+                            { id: "faster-whisper", name: "faster-whisper" }
+                          ]}
+                          onChange={(val) =>
+                            setHelperConfig({
+                              ...helperConfig,
+                              asrProvider: val as MemflowHelperConfig["asrProvider"],
+                              asrModel:
+                                val === "qwen3-asr-gguf" ? "qwen3-0.6b" : "large-v3"
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">
+                          {lang === "zh" ? "ASR Model" : "ASR Model"}
+                        </label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={helperConfig.asrModel}
+                          onChange={(e) =>
+                            setHelperConfig({ ...helperConfig, asrModel: e.target.value })
+                          }
+                          placeholder={helperConfig.asrProvider === "qwen3-asr-gguf" ? "qwen3-0.6b" : "large-v3"}
+                        />
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div className="form-group">
+                          <label className="form-label">
+                            {lang === "zh" ? "轮询间隔(ms)" : "Poll interval (ms)"}
+                          </label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={helperConfig.pollIntervalMs}
+                            onChange={(e) =>
+                              setHelperConfig({
+                                ...helperConfig,
+                                pollIntervalMs: parseInt(e.target.value) || 1500
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">
+                            {lang === "zh" ? "超时(ms)" : "Timeout (ms)"}
+                          </label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            value={helperConfig.timeoutMs}
+                            onChange={(e) =>
+                              setHelperConfig({
+                                ...helperConfig,
+                                timeoutMs: parseInt(e.target.value) || 300000
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 12, display: "flex", gap: 12, alignItems: "center" }}>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setHelperStatus("testing")
+                            setHelperMessage("")
+                            try {
+                              const health = await MemflowHelperService.health(helperConfig.baseUrl)
+                              const providerState = health.providers?.[helperConfig.asrProvider]
+                              if (!providerState?.available) {
+                                throw new Error(
+                                  lang === "zh"
+                                    ? `Provider 不可用: ${providerState?.detail || helperConfig.asrProvider}`
+                                    : `Provider unavailable: ${providerState?.detail || helperConfig.asrProvider}`
+                                )
+                              }
+                              setHelperStatus("success")
+                              setHelperMessage(lang === "zh" ? "Helper 连接成功" : "Helper connected")
+                            } catch (error) {
+                              setHelperStatus("error")
+                              setHelperMessage(
+                                error instanceof Error
+                                  ? error.message
+                                  : (lang === "zh" ? "Helper 连接失败" : "Helper connection failed")
+                              )
+                            }
+                          }}
+                          style={{
+                            padding: "8px 16px",
+                            background: helperStatus === "testing" ? "#666" : helperStatus === "success" ? "#10b981" : helperStatus === "error" ? "#ef4444" : "#f59e0b",
+                            color: helperStatus !== "idle" && helperStatus !== "testing" ? "#fff" : "#000",
+                            border: "none",
+                            borderRadius: 6,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: helperStatus === "testing" ? "wait" : "pointer"
+                          }}>
+                          {helperStatus === "testing"
+                            ? (lang === "zh" ? "测试中..." : "Testing...")
+                            : (lang === "zh" ? "测试 Helper" : "Test Helper")}
+                        </button>
+                        {helperMessage && (
+                          <span
+                            style={{
+                              fontSize: 12,
+                              color: helperStatus === "success" ? "#10b981" : helperStatus === "error" ? "#ef4444" : "#888"
+                            }}>
+                            {helperMessage}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </>
                 )}

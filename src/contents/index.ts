@@ -3,7 +3,8 @@ import type { PlasmoCSConfig } from "plasmo"
 import { ObsidianURIHandler } from "../obsidian/uri-handler"
 import { createMarkdownBuilder, createMetadataGenerator } from "../processing"
 import { AIService } from "../services/ai-api"
-import type { AIApiConfig, Conversation } from "../types"
+import { MemflowHelperService } from "../services/memflow-helper"
+import type { AIApiConfig, Conversation, MemflowHelperConfig } from "../types"
 import {
   BiliBiliAdapter,
   detectPlatformAdapter,
@@ -16,7 +17,7 @@ import {
 /**
  * 构建 B 站视频的 Markdown 内容
  */
-function buildBilibiliMarkdown(
+export function buildBilibiliMarkdown(
   videoInfo: {
     title: string
     uploader: string
@@ -74,12 +75,7 @@ status: 待整理
   if (subtitles) {
     content += `---\n\n`
     content += `## 字幕内容\n\n`
-    // 限制字幕长度，避免太长
-    const truncatedSubtitles =
-      subtitles.length > 50000
-        ? subtitles.slice(0, 50000) + "\n\n...（字幕过长，已截断）"
-        : subtitles
-    content += truncatedSubtitles + "\n"
+    content += subtitles + "\n"
   }
 
   // 底部信息
@@ -89,6 +85,31 @@ status: 待整理
   content += `- **导出时间**: ${new Date().toLocaleString("zh-CN")}\n`
 
   return yaml + "\n\n" + content
+}
+
+async function tryMemflowHelperSubtitleFallback(
+  videoUrl: string,
+  platformLabel: string
+): Promise<string> {
+  try {
+    const { memflowHelperConfig } =
+      await chrome.storage.sync.get("memflowHelperConfig")
+    const helperConfig = memflowHelperConfig as MemflowHelperConfig | undefined
+    if (!helperConfig?.enabled || !helperConfig.baseUrl) {
+      return ""
+    }
+
+    showToast(`未检测到原生字幕，尝试 ${platformLabel} 本地转写...`, "warning")
+    const transcript = await MemflowHelperService.transcribeVideoUrl(
+      videoUrl,
+      helperConfig,
+      "auto"
+    )
+    return transcript?.trim() || ""
+  } catch (error) {
+    console.error(`[Memflow ${platformLabel}] MemflowHelper 转写失败:`, error)
+    return ""
+  }
 }
 
 /**
@@ -194,7 +215,7 @@ function buildYouTubeEmbed(videoUrl: string, title: string): string {
 /**
  * 构建 YouTube 视频的 Markdown 内容
  */
-function buildYouTubeMarkdown(
+export function buildYouTubeMarkdown(
   videoInfo: {
     title: string
     channelName: string
@@ -251,11 +272,7 @@ status: 待整理
   if (subtitles) {
     content += `---\n\n`
     content += `## 字幕内容\n\n`
-    const truncatedSubtitles =
-      subtitles.length > 50000
-        ? subtitles.slice(0, 50000) + "\n\n...（字幕过长，已截断）"
-        : subtitles
-    content += truncatedSubtitles + "\n"
+    content += subtitles + "\n"
   }
 
   content += `---\n\n`
@@ -451,13 +468,8 @@ status: 待整理
     content += `---\n\n`
     content += `## 网页正文\n\n`
 
-    // 限制内容长度
     const rawContent = conversation.messages[0]?.content || ""
-    const truncatedContent =
-      rawContent.length > 50000
-        ? rawContent.slice(0, 50000) + "\n\n...（内容过长，已截断）"
-        : rawContent
-    content += truncatedContent + "\n"
+    content += rawContent + "\n"
 
     // 底部信息
     content += `---\n\n`
@@ -618,6 +630,12 @@ async function exportDirect() {
             !!videoConfig?.saveSubtitlesWithTimestamp,
             videoBaseUrl
           )
+          if (!subtitles) {
+            subtitles = await tryMemflowHelperSubtitleFallback(
+              videoBaseUrl,
+              "Bilibili"
+            )
+          }
         } else {
           console.log("[Memflow Bilibili] 设置中禁用了保存字幕")
         }
@@ -707,6 +725,12 @@ async function exportDirect() {
             !!videoConfig?.saveSubtitlesWithTimestamp,
             videoBaseUrl
           )
+          if (!subtitles) {
+            subtitles = await tryMemflowHelperSubtitleFallback(
+              videoBaseUrl,
+              "YouTube"
+            )
+          }
         } else {
           console.log("[Memflow YouTube] 设置中禁用了保存字幕")
         }
@@ -835,6 +859,9 @@ async function exportBiliBiliSmart() {
     const videoBaseUrl = window.location.href.split("?")[0]
 
     subtitles = await bilibiliAdapter.getSubtitles(withTimestamp, videoBaseUrl)
+    if (!subtitles || subtitles.length === 0) {
+      subtitles = await tryMemflowHelperSubtitleFallback(videoBaseUrl, "Bilibili")
+    }
 
     if (!subtitles || subtitles.length === 0) {
       hideVideoProgress()
@@ -857,9 +884,15 @@ async function exportBiliBiliSmart() {
     const templateConfig = templateConfigResult.templateConfig
     const templateType = templateConfig?.bilibili?.templateType || "tech"
 
-    if (!aiApiConfig?.enabled || !aiApiConfig?.apiKey) {
+    const isLocalProvider = aiApiConfig?.provider === "local"
+    if (!aiApiConfig?.enabled) {
       hideVideoProgress()
-      showToast("请在设置中配置 AI API", "error")
+      showToast("请在设置中启用 AI API", "error")
+      return
+    }
+    if (!isLocalProvider && !aiApiConfig?.apiKey) {
+      hideVideoProgress()
+      showToast("请在设置中配置 AI API Key", "error")
       return
     }
 
@@ -1089,6 +1122,9 @@ async function exportYouTubeSmart() {
     const videoBaseUrl = window.location.href
 
     subtitles = await youtubeAdapter.getSubtitles(withTimestamp, videoBaseUrl)
+    if (!subtitles || subtitles.length === 0) {
+      subtitles = await tryMemflowHelperSubtitleFallback(videoBaseUrl, "YouTube")
+    }
 
     if (!subtitles || subtitles.length === 0) {
       hideVideoProgress()
@@ -1102,9 +1138,15 @@ async function exportYouTubeSmart() {
 
     console.log("[Memflow YouTube] 字幕获取成功，长度:", subtitles.length)
 
-    if (!initialAiConfig?.enabled || !initialAiConfig?.apiKey) {
+    const isLocalProvider = initialAiConfig?.provider === "local"
+    if (!initialAiConfig?.enabled) {
       hideVideoProgress()
-      showToast("请在设置中配置 AI API", "error")
+      showToast("请在设置中启用 AI API", "error")
+      return
+    }
+    if (!isLocalProvider && !initialAiConfig?.apiKey) {
+      hideVideoProgress()
+      showToast("请在设置中配置 AI API Key", "error")
       return
     }
 
@@ -1345,7 +1387,9 @@ async function exportSmartClipSmart() {
       return
     }
 
-    showToast("AI 分析中...", "warning")
+    showToast("AI 分析中...", "warning", {
+      duration: LONG_AI_TOAST_DURATION
+    })
 
     // 4. 使用 AI 生成元数据
     const aiConfig: AIApiConfig = {
@@ -1438,13 +1482,8 @@ status: 待整理
     content += `---\n\n`
     content += `## 网页正文\n\n`
 
-    // 限制内容长度
     const rawContent = conversation.messages[0]?.content || ""
-    const truncatedContent =
-      rawContent.length > 50000
-        ? rawContent.slice(0, 50000) + "\n\n...（内容过长，已截断）"
-        : rawContent
-    content += truncatedContent + "\n"
+    content += rawContent + "\n"
 
     // 底部信息
     content += `---\n\n`
@@ -1530,7 +1569,9 @@ async function exportSmart() {
     })
     if (!confirmed) return
 
-    showToast("正在请求 AI 分析对话...", "warning")
+    showToast("正在请求 AI 分析对话...", "warning", {
+      duration: LONG_AI_TOAST_DURATION
+    })
     console.log("[Memflow] 开始调用外部大模型...")
 
     // 2. 提取当前对话
@@ -1611,9 +1652,17 @@ function downloadMarkdown(content: string, filename: string) {
   URL.revokeObjectURL(url)
 }
 
+const DEFAULT_TOAST_DURATION = 3000
+const LONG_AI_TOAST_DURATION = 60000
+
+interface ToastOptions {
+  duration?: number
+}
+
 function showToast(
   message: string,
-  type: "success" | "error" | "warning" = "success"
+  type: "success" | "error" | "warning" = "success",
+  options: ToastOptions = {}
 ) {
   const existingToast = document.querySelector(".memflow-toast")
   if (existingToast) {
@@ -1626,10 +1675,12 @@ function showToast(
 
   document.body.appendChild(toast)
 
+  const duration = options.duration ?? DEFAULT_TOAST_DURATION
+
   setTimeout(() => {
     toast.style.animation = "memflow-toast-slide-out 0.3s ease-out forwards"
     setTimeout(() => toast.remove(), 300)
-  }, 3000)
+  }, duration)
 }
 
 type MemflowConfirmIcon = "captions" | "sparkles"
@@ -1788,7 +1839,9 @@ function showVideoProgress(step: 1 | 2 | 3, extraMessage?: string) {
 
   const currentMessage = stepMessages[step - 1] || `步骤 ${step}`
 
-  showToast(currentMessage, "warning")
+  showToast(currentMessage, "warning", {
+    duration: step === 2 ? LONG_AI_TOAST_DURATION : DEFAULT_TOAST_DURATION
+  })
 }
 
 function hideVideoProgress() {}

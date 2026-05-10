@@ -1,13 +1,16 @@
 {
   "name": "promo-video",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Memflow promo video",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "remotion studio",
+    "build": "remotion render MemflowUpdate out/v1.1.0.mp4",
+    "preview": "remotion preview"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "dependencies": {
+    "@remotion/cli": "^4.0.438",
+    "@remotion/media": "^4.0.438",
+    "lucide-react": "^0.577.0",
+    "remotion": "^4.0.438"
+  }
 }

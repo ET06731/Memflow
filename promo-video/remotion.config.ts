@@ -1,4 +1,3 @@
-import { Config } from '@remotion/cli/config';
+import { Config } from "@remotion/cli/config"
 
-Config.setVideoImageFormat('jpeg');
-Config.setOutputFormat('mp4');
+Config.setVideoImageFormat("jpeg")

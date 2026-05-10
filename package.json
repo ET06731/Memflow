@@ -1,7 +1,7 @@
 {
   "name": "memflow",
   "displayName": "Memflow - 一键剪藏视频与网页内容",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "一键剪藏视频、网页内容，并用 AI 生成总结",
   "author": "Memflow Team",
   "scripts": {
@@ -52,6 +52,8 @@
       "https://*.youtube.com/*",
       "https://youtube.com/*",
       "https://youtu.be/*",
+      "http://127.0.0.1/*",
+      "http://localhost/*",
       "http://127.0.0.1:11434/*",
       "http://localhost:11434/*",
       "http://127.0.0.1:1234/*",

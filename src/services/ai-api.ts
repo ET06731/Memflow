@@ -113,6 +113,14 @@ export class AIService {
       return []
     }
 
+    const normalizedBaseUrl = baseUrl.replace(/\/+$/, "")
+    const baseRootUrl = normalizedBaseUrl.replace(/\/v1$/, "")
+    const ollamaTagsUrl = `${baseRootUrl}/api/tags`
+    const openaiModelUrls = [
+      `${normalizedBaseUrl}/models`,
+      `${baseRootUrl}/v1/models`
+    ].filter((url, index, arr) => arr.indexOf(url) === index)
+
     const authHeaders = {
       "Content-Type": "application/json",
       "Authorization": "Bearer local"
@@ -120,7 +128,7 @@ export class AIService {
 
     try {
       // Ollama format: GET /api/tags -> { models: [{ name: "qwen2.5:7b" }] }
-      const ollamaResponse = await fetch(`${baseUrl}/api/tags`, {
+      const ollamaResponse = await fetch(ollamaTagsUrl, {
         method: "GET",
         headers: { "Content-Type": "application/json" }
       })
@@ -133,15 +141,17 @@ export class AIService {
       }
 
       // OpenAI-compatible format: GET /v1/models -> { data: [{ id: "model-name" }] }
-      const openaiResponse = await fetch(`${baseUrl}/v1/models`, {
-        method: "GET",
-        headers: authHeaders
-      })
+      for (const url of openaiModelUrls) {
+        const openaiResponse = await fetch(url, {
+          method: "GET",
+          headers: authHeaders
+        })
 
-      if (openaiResponse.ok) {
-        const data = await openaiResponse.json()
-        if (data.data && Array.isArray(data.data)) {
-          return data.data.map((m: { id: string }) => m.id)
+        if (openaiResponse.ok) {
+          const data = await openaiResponse.json()
+          if (data.data && Array.isArray(data.data)) {
+            return data.data.map((m: { id: string }) => m.id)
+          }
         }
       }
 
