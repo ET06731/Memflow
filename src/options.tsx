@@ -960,11 +960,21 @@ function Options() {
                         }))}
                         onChange={(val) => {
                           const provider = providers.find((p) => p.id === val)
+                          // 根据 provider 类型设置默认的 baseUrl
+                          const defaultBaseUrls: Record<string, string> = {
+                            openai: "https://api.openai.com/v1",
+                            deepseek: "https://api.deepseek.com/v1",
+                            kimi: "https://api.moonshot.cn/v1",
+                            gemini: "https://generativelanguage.googleapis.com/v1",
+                            local: "http://127.0.0.1:11434/v1",
+                            custom: ""
+                          }
+                          const newBaseUrl = defaultBaseUrls[val] || ""
                           setAiConfig({
                             ...aiConfig,
                             provider: val as AIApiConfig["provider"],
                             model: provider?.defaultModel || "",
-                            baseUrl: val === "local" ? "http://127.0.0.1:1234/v1" : aiConfig.baseUrl
+                            baseUrl: newBaseUrl
                           })
                         }}
                       />
@@ -1066,6 +1076,16 @@ function Options() {
                           setTestMessage("")
                           try {
                             const baseUrl = aiConfig.baseUrl || (aiConfig.provider === "local" ? "http://127.0.0.1:11434/v1" : "")
+                            if (!baseUrl) {
+                              setTestStatus("error")
+                              setTestMessage(lang === "zh" ? "请填写 Base URL" : "Please enter Base URL")
+                              return
+                            }
+                            if (aiConfig.provider !== "local" && !aiConfig.apiKey) {
+                              setTestStatus("error")
+                              setTestMessage(lang === "zh" ? "请填写 API Key" : "Please enter API Key")
+                              return
+                            }
                             const response = await fetch(`${baseUrl}/chat/completions`, {
                               method: "POST",
                               headers: {
@@ -1080,11 +1100,16 @@ function Options() {
                                 stream: false
                               })
                             })
+                            const responseText = await response.text()
                             if (!response.ok) {
-                              const errorText = await response.text()
-                              throw new Error(`${response.status}: ${errorText}`)
+                              throw new Error(`${response.status}: ${responseText}`)
                             }
-                            const data = await response.json()
+                            let data
+                            try {
+                              data = JSON.parse(responseText)
+                            } catch {
+                              throw new Error(`Invalid JSON response: ${responseText.substring(0, 200)}`)
+                            }
                             if (data.choices?.[0]?.message?.content) {
                               setTestStatus("success")
                               setTestMessage(lang === "zh" ? "连接成功！" : "Connection successful!")
@@ -1148,7 +1173,7 @@ function Options() {
                     color: "#aaa"
                   }}>
                   {lang === "zh"
-                    ? "记忆流动 - 打通 AI 平台与 Obsidian 的最后一公里。让每一个灵感都被妥善保存。"
+                    ? "让记忆碎片自由流动 - 构建成你的知识体系。"
                     : "Bridge the gap between AI platforms and Obsidian. Make sure every spark of thought is preserved."}
                 </p>
                 <div style={{ marginTop: "48px" }}>

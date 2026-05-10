@@ -32,5 +32,8 @@ dist/
 # typescript
 .tsbuildinfo
 
-# promo-video
+# Remotion / promo-video
 promo-video/
+promo-video/out/
+remotion/
+render/

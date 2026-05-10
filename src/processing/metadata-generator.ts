@@ -96,8 +96,13 @@ export class MetadataGenerator {
 
       const { aiApiConfig } = await chrome.storage.sync.get("aiApiConfig")
 
-      if (!aiApiConfig || !aiApiConfig.enabled || !aiApiConfig.apiKey) {
+      const isLocalProvider = aiApiConfig?.provider === "local"
+      if (!aiApiConfig || !aiApiConfig.enabled) {
         console.warn("[MetadataGenerator] 未配置 AI API，降级使用本地生成。")
+        return localMetadata
+      }
+      if (!isLocalProvider && !aiApiConfig.apiKey) {
+        console.warn("[MetadataGenerator] 未配置 AI API Key，降级使用本地生成。")
         return localMetadata
       }
 

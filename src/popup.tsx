@@ -29,6 +29,7 @@ const i18n = {
     saved: "已保存",
     exportChat: "立即导出",
     smartExport: "智能导出",
+    copyMarkdown: "复制Markdown",
     exportHint: "",
     smartHint: "使用 AI 模型总结字幕",
     settings: "设置",
@@ -46,6 +47,7 @@ const i18n = {
     saved: "Saved",
     exportChat: "Quick Export",
     smartExport: "Smart Export",
+    copyMarkdown: "Copy Markdown",
     exportHint: "",
     smartHint: "Summarize subtitles with AI model",
     settings: "Settings",
@@ -723,40 +725,78 @@ function Popup() {
               {t.exportChat}
             </button>
 
-            <button
-              className="smart-export-btn"
-              onClick={async () => {
-                try {
-                  const [tab] = await chrome.tabs.query({
-                    active: true,
-                    currentWindow: true
-                  })
-                  if (!tab?.id) {
-                    console.error("❌ 无法获取当前标签页")
-                    return
-                  }
-                  await chrome.tabs.sendMessage(tab.id, {
-                    action: "triggerExportSmart"
-                  })
-                  console.log("✅ 智能导出已触发")
-                } catch (error) {
-                  console.error("❌ 智能导出失败:", error)
-                }
-              }}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round">
-                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-              </svg>
-              {t.smartExport}
-            </button>
+             <button
+               className="smart-export-btn"
+               onClick={async () => {
+                 try {
+                   const [tab] = await chrome.tabs.query({
+                     active: true,
+                     currentWindow: true
+                   })
+                   if (!tab?.id) {
+                     console.error("❌ 无法获取当前标签页")
+                     return
+                   }
+                   await chrome.tabs.sendMessage(tab.id, {
+                     action: "triggerExportSmart"
+                   })
+                   console.log("✅ 智能导出已触发")
+                 } catch (error) {
+                   console.error("❌ 智能导出失败:", error)
+                 }
+               }}>
+               <svg
+                 xmlns="http://www.w3.org/2000/svg"
+                 width="16"
+                 height="16"
+                 viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 strokeWidth="2.5"
+                 strokeLinecap="round"
+                 strokeLinejoin="round">
+                 <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+               </svg>
+               {t.smartExport}
+             </button>
+
+             <button
+               className="smart-export-btn"
+               onClick={async () => {
+                 try {
+                   const [tab] = await chrome.tabs.query({
+                     active: true,
+                     currentWindow: true
+                   })
+                   if (!tab?.id) {
+                     console.error("❌ 无法获取当前标签页")
+                     return
+                   }
+                   await chrome.tabs.sendMessage(tab.id, {
+                     action: "triggerExportSmart",
+                     copyMarkdown: true
+                   })
+                   console.log("✅ 智能导出并复制Markdown已触发")
+                 } catch (error) {
+                   console.error("❌ 智能导出并复制Markdown失败:", error)
+                 }
+               }}>
+               <svg
+                 xmlns="http://www.w3.org/2000/svg"
+                 width="16"
+                 height="16"
+                 viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 strokeWidth="2.5"
+                 strokeLinecap="round"
+                 strokeLinejoin="round">
+                 <path d="M8 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-4Z" />
+                 <path d="M16 14H6v-4h10v4Z" />
+                 <path d="M10 6h4" />
+               </svg>
+               {t.copyMarkdown}
+             </button>
 
             <div className="config-card">
               <div className="form-group">
