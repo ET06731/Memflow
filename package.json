@@ -1,8 +1,8 @@
 {
   "name": "memflow",
-  "displayName": "Memflow - Export AI Chat to Obsidian",
+  "displayName": "Memflow - 一键剪藏视频与网页内容",
   "version": "1.2.0",
-  "description": "Web Content Clipper · AI Enhanced · Knowledge Management",
+  "description": "一键剪藏视频、网页内容，并用 AI 生成总结",
   "author": "Memflow Team",
   "scripts": {
     "dev": "plasmo dev",

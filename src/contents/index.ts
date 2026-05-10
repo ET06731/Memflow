@@ -42,7 +42,7 @@ source: [[B站视频]]
 original_url: "${window.location.href}"
 tags: [${tags}]
 category: 娱乐
-status: 🟢 待整理
+status: 待整理
 ---`
 
   let content = ""
@@ -56,7 +56,7 @@ status: 🟢 待整理
   }
 
   // 视频信息
-  content += `## 📺 视频信息\n\n`
+  content += `## 视频信息\n\n`
   content += `- **UP主**: [${videoInfo.uploader}](${videoInfo.uploaderUrl})\n`
   content += `- **发布时间**: ${videoInfo.publishDate}\n`
   content += `- **播放量**: ${videoInfo.views}\n`
@@ -67,13 +67,13 @@ status: 🟢 待整理
 
   // 简介
   content += `---\n\n`
-  content += `## 📝 视频简介\n\n`
+  content += `## 视频简介\n\n`
   content += `${videoInfo.description || "无简介"}\n\n`
 
   // 字幕
   if (subtitles) {
     content += `---\n\n`
-    content += `## 📄 字幕内容\n\n`
+    content += `## 字幕内容\n\n`
     // 限制字幕长度，避免太长
     const truncatedSubtitles =
       subtitles.length > 50000
@@ -84,7 +84,7 @@ status: 🟢 待整理
 
   // 底部信息
   content += `---\n\n`
-  content += `## 📎 相关信息\n\n`
+  content += `## 相关信息\n\n`
   content += `- **视频地址**: ${window.location.href}\n`
   content += `- **导出时间**: ${new Date().toLocaleString("zh-CN")}\n`
 
@@ -134,14 +134,14 @@ source: [[B站视频]]
 original_url: "${window.location.href}"
 tags: [B站视频, 稍后看, 视频列表]
 category: 娱乐
-status: 🟢 待整理
+status: 待整理
 ---`
 
   let content = ""
 
   // 标题
   content += `# ${conversation.title}\n\n`
-  content += `> 🤖 由 Memflow 导出\n\n`
+  content += `> 由 Memflow 导出\n\n`
 
   // 视频列表内容（从 messages 中提取）
   if (conversation.messages.length > 0) {
@@ -150,7 +150,7 @@ status: 🟢 待整理
 
   // 底部信息
   content += `---\n\n`
-  content += `## 📎 相关信息\n\n`
+  content += `## 相关信息\n\n`
   content += `- **列表地址**: ${window.location.href}\n`
   content += `- **导出时间**: ${new Date().toLocaleString("zh-CN")}\n`
 
@@ -217,7 +217,7 @@ source: [[YouTube视频]]
 original_url: "${window.location.href}"
 tags: [${tags}]
 category: 娱乐
-status: 🟢 待整理
+status: 待整理
 ---`
 
   let content = ""
@@ -229,7 +229,7 @@ status: 🟢 待整理
     content += `${videoEmbed}\n\n`
   }
 
-  content += `## 📺 视频信息\n\n`
+  content += `## 视频信息\n\n`
   content += `- **频道**: [${videoInfo.channelName}](${videoInfo.channelUrl})\n`
   if (videoInfo.publishDate) {
     content += `- **发布时间**: ${videoInfo.publishDate}\n`
@@ -244,13 +244,13 @@ status: 🟢 待整理
 
   if (videoInfo.description) {
     content += `---\n\n`
-    content += `## 📝 视频简介\n\n`
+    content += `## 视频简介\n\n`
     content += `${videoInfo.description}\n\n`
   }
 
   if (subtitles) {
     content += `---\n\n`
-    content += `## 📄 字幕内容\n\n`
+    content += `## 字幕内容\n\n`
     const truncatedSubtitles =
       subtitles.length > 50000
         ? subtitles.slice(0, 50000) + "\n\n...（字幕过长，已截断）"
@@ -259,7 +259,7 @@ status: 🟢 待整理
   }
 
   content += `---\n\n`
-  content += `## 📎 相关信息\n\n`
+  content += `## 相关信息\n\n`
   content += `- **视频地址**: ${window.location.href}\n`
   content += `- **导出时间**: ${new Date().toLocaleString("zh-CN")}\n`
 
@@ -390,7 +390,7 @@ source: [[网页剪藏]]
 original_url: "${window.location.href}"
 tags: [${tags}]
 category: ${localMetadata.category}
-status: 🟢 待整理
+status: 待整理
 ---`
 
     let content = ""
@@ -400,7 +400,7 @@ status: 🟢 待整理
 
     // 元数据信息
     content += `---\n\n`
-    content += `## 📋 网页信息\n\n`
+    content += `## 网页信息\n\n`
     if (metadata.author) {
       content += `- **作者**: ${metadata.author}\n`
     }
@@ -421,12 +421,12 @@ status: 🟢 待整理
 
     // 本地摘要
     content += `---\n\n`
-    content += `## 📝 摘要\n\n`
+    content += `## 摘要\n\n`
     content += `${localMetadata.summary}\n\n`
 
     // 关键词
     content += `---\n\n`
-    content += `## 🏷️ 关键词\n\n`
+    content += `## 关键词\n\n`
     content += localMetadata.keywords.join(", ") + "\n\n"
 
     // 高亮内容
@@ -437,11 +437,11 @@ status: 🟢 待整理
 
     if (highlights.length > 0) {
       content += `---\n\n`
-      content += `## ⭐ 高亮内容\n\n`
+      content += `## 高亮内容\n\n`
       highlights.forEach((h: any, i) => {
         content += `${i + 1}. ${h.text}\n`
         if (h.note) {
-          content += `   > 💡 想法: ${h.note}\n`
+          content += `   > 想法: ${h.note}\n`
         }
       })
       content += "\n"
@@ -449,7 +449,7 @@ status: 🟢 待整理
 
     // 网页正文
     content += `---\n\n`
-    content += `## 📄 网页正文\n\n`
+    content += `## 网页正文\n\n`
 
     // 限制内容长度
     const rawContent = conversation.messages[0]?.content || ""
@@ -461,7 +461,7 @@ status: 🟢 待整理
 
     // 底部信息
     content += `---\n\n`
-    content += `## 📎 相关信息\n\n`
+    content += `## 相关信息\n\n`
     content += `- **原文链接**: ${window.location.href}\n`
     content += `- **剪藏时间**: ${new Date().toLocaleString("zh-CN")}\n`
 
@@ -808,9 +808,13 @@ async function exportBiliBiliSmart() {
     }
 
     // 2. 确认提示
-    const confirmed = window.confirm(
-      "🤖 B 站视频智能导出\n\n插件将提取视频字幕并使用 AI 生成深度结构化长文总结。\n\n💡 请确保视频已开启字幕功能（点击播放器底部控制栏的「字幕」或「AI 字幕」按钮）\n\n是否继续？"
-    )
+    const confirmed = await showMemflowConfirm({
+      title: "请确认视频自带或支持AI字幕",
+      description: "插件将提取视频字幕并生成总结。",
+      question: "是否继续?",
+      icon: "captions",
+      confirmText: "继续"
+    })
     if (!confirmed) return
 
     showVideoProgress(1)
@@ -835,7 +839,7 @@ async function exportBiliBiliSmart() {
     if (!subtitles || subtitles.length === 0) {
       hideVideoProgress()
       showToast(
-        "❌ 未检测到字幕！请在视频播放器下方点击「字幕」或「AI 字幕」按钮开启控制后重试",
+        "未检测到字幕。请在播放器底部点击「字幕」或「AI 字幕」按钮后重试",
         "error"
       )
       console.log("[Memflow Bilibili] 未找到字幕，视频可能没有开启字幕")
@@ -895,22 +899,22 @@ source: [[B站视频]]
 original_url: "${window.location.href}"
 tags: [${tags}]
 category: ${aiResult.category as any}
-status: 🟢 待整理
+status: 待整理
 ---`
 
     let content = ""
 
-    // 标题 (🤖)
+    // 标题
     content += `# ${videoInfo.title}\n\n`
-    content += `> \u{1F916} 由 Memflow AI 总结\n\n`
+    content += `> 由 Memflow AI 总结\n\n`
 
     const videoEmbed = buildBilibiliEmbed(window.location.href, videoInfo.title)
     if (videoEmbed) {
       content += `${videoEmbed}\n\n`
     }
 
-    // 视频信息 (📺)
-    content += `## \u{1F4FA} 视频信息\n\n`
+    // 视频信息
+    content += `## 视频信息\n\n`
     content += `- **UP主**: [${videoInfo.uploader}](${videoInfo.uploaderUrl})\n`
     content += `- **发布时间**: ${videoInfo.publishDate}\n`
     content += `- **播放量**: ${videoInfo.views}\n`
@@ -919,25 +923,25 @@ status: 🟢 待整理
     content += `- **收藏**: ${videoInfo.favorites}\n`
     content += `- **标签**: ${videoInfo.tags.join(", ")}\n\n`
 
-    // 简介 (📝)
+    // 简介
     content += `---\n\n`
-    content += `## \u{1F4DD} 视频简介\n\n`
+    content += `## 视频简介\n\n`
     content += `${videoInfo.description || "无简介"}\n\n`
 
-    // AI 总结 (💡)
+    // AI 总结
     content += `---\n\n`
-    content += `## \u{1F4A1} AI 总结\n\n`
+    content += `## AI 总结\n\n`
     content += `${aiResult.summary}\n\n`
 
-    // 关键词 (🏷️)
+    // 关键词
     content += `---\n\n`
-    content += `## \u{1F3F7}\u{FE0F} 关键词\n\n`
+    content += `## 关键词\n\n`
     content += aiResult.keywords.join(", ") + "\n\n"
 
     if (aiConfig.bilibiliPromptTemplate === "english") {
       if (aiResult.highFrequencyWords && aiResult.highFrequencyWords.length > 0) {
         content += `---\n\n`
-        content += `## 📚 高频词汇\n\n`
+        content += `## 高频词汇\n\n`
         aiResult.highFrequencyWords.forEach((item) => {
           content += `* **${item.word}** - ${item.translation}\n`
           if (item.example) {
@@ -949,7 +953,7 @@ status: 🟢 待整理
 
       if (aiResult.commonPhrases && aiResult.commonPhrases.length > 0) {
         content += `---\n\n`
-        content += `## 💬 常用短语\n\n`
+        content += `## 常用短语\n\n`
         aiResult.commonPhrases.forEach((item) => {
           content += `* **${item.phrase}** - ${item.translation}\n`
           if (item.example) {
@@ -973,7 +977,7 @@ status: 🟢 待整理
 
       if (aiResult.trendingPhrases && aiResult.trendingPhrases.length > 0) {
         content += `---\n\n`
-        content += `## 🔥 流行语解释\n\n`
+        content += `## 流行语解释\n\n`
         aiResult.trendingPhrases.forEach((item) => {
           content += `* **${item.phrase}** - ${item.meaning}\n`
           if (item.context) {
@@ -985,19 +989,19 @@ status: 🟢 待整理
     }
 
     // 如果用户开启了保存原文字幕，则追加
-    // 原文字幕 (📑)
+    // 原文字幕
     if (topConfig?.saveSubtitles !== false && subtitles) {
       content += `---\n\n`
-      content += `## \u{1F4D1} 字幕原文\n\n`
+      content += `## 字幕原文\n\n`
       const subtitleText = aiConfig.bilibiliPromptTemplate === "english" && aiResult.originalTextWithBold
         ? aiResult.originalTextWithBold
         : subtitles
       content += `${subtitleText}\n\n`
     }
 
-    // 底部信息 (📎)
+    // 底部信息
     content += `---\n\n`
-    content += `## \u{1F4CE} 相关信息\n\n`
+    content += `## 相关信息\n\n`
     content += `- **视频地址**: ${window.location.href}\n`
     content += `- **导出时间**: ${new Date().toLocaleString("zh-CN")}\n`
 
@@ -1063,9 +1067,12 @@ async function exportYouTubeSmart() {
 
     const { aiApiConfig: initialAiConfig } = await chrome.storage.sync.get("aiApiConfig")
 
-    const confirmed = window.confirm(
-      "🤖 YouTube 视频智能导出\n\n插件将尝试直接提取视频完整字幕，并使用 AI 生成深度结构化长文总结。\n\n是否继续？"
-    )
+    const confirmed = await showMemflowConfirm({
+      title: "YouTube 视频智能导出",
+      description: "将尝试提取视频完整字幕，并使用 AI 生成结构化长文总结。",
+      icon: "captions",
+      confirmText: "开始导出"
+    })
     if (!confirmed) return
 
     showVideoProgress(1)
@@ -1086,7 +1093,7 @@ async function exportYouTubeSmart() {
     if (!subtitles || subtitles.length === 0) {
       hideVideoProgress()
       showToast(
-        "❌ 未检测到完整字幕轨道。视频可能没有字幕，或页面数据还未加载完成，请稍后重试",
+        "未检测到完整字幕轨道。视频可能没有字幕，或页面数据还未加载完成，请稍后重试",
         "error"
       )
       console.log("[Memflow YouTube] 未找到完整字幕轨道")
@@ -1145,20 +1152,20 @@ source: [[YouTube视频]]
 original_url: "${window.location.href}"
 tags: [${tags}]
 category: ${aiResult.category as any}
-status: 🟢 待整理
+status: 待整理
 ---`
 
     let content = ""
 
     content += `# ${videoInfo.title}\n\n`
-    content += `> 🤖 由 Memflow AI 总结\n\n`
+    content += `> 由 Memflow AI 总结\n\n`
 
     const videoEmbed = buildYouTubeEmbed(window.location.href, videoInfo.title)
     if (videoEmbed) {
       content += `${videoEmbed}\n\n`
     }
 
-    content += `## 📺 视频信息\n\n`
+    content += `## 视频信息\n\n`
     content += `- **频道**: [${videoInfo.channelName}](${videoInfo.channelUrl})\n`
     if (videoInfo.publishDate) {
       content += `- **发布时间**: ${videoInfo.publishDate}\n`
@@ -1172,21 +1179,21 @@ status: 🟢 待整理
     }
 
     content += `---\n\n`
-    content += `## 📝 视频简介\n\n`
+    content += `## 视频简介\n\n`
     content += `${videoInfo.description || "无简介"}\n\n`
 
     content += `---\n\n`
-    content += `## 💡 AI 总结\n\n`
+    content += `## AI 总结\n\n`
     content += `${aiResult.summary}\n\n`
 
     content += `---\n\n`
-    content += `## 🏷️ 关键词\n\n`
+    content += `## 关键词\n\n`
     content += aiResult.keywords.join(", ") + "\n\n"
 
     if (aiConfig.bilibiliPromptTemplate === "english") {
       if (aiResult.highFrequencyWords && aiResult.highFrequencyWords.length > 0) {
         content += `---\n\n`
-        content += `## 📚 高频词汇\n\n`
+        content += `## 高频词汇\n\n`
         aiResult.highFrequencyWords.forEach((item) => {
           content += `* **${item.word}** - ${item.translation}\n`
           if (item.example) {
@@ -1198,7 +1205,7 @@ status: 🟢 待整理
 
       if (aiResult.commonPhrases && aiResult.commonPhrases.length > 0) {
         content += `---\n\n`
-        content += `## 💬 常用短语\n\n`
+        content += `## 常用短语\n\n`
         aiResult.commonPhrases.forEach((item) => {
           content += `* **${item.phrase}** - ${item.translation}\n`
           if (item.example) {
@@ -1210,7 +1217,7 @@ status: 🟢 待整理
 
       if (aiResult.idioms && aiResult.idioms.length > 0) {
         content += `---\n\n`
-        content += `## 🏛️ 英文俗语\n\n`
+        content += `## 英文俗语\n\n`
         aiResult.idioms.forEach((item) => {
           content += `* **${item.idiom}** - ${item.meaning}\n`
           if (item.origin) {
@@ -1222,7 +1229,7 @@ status: 🟢 待整理
 
       if (aiResult.trendingPhrases && aiResult.trendingPhrases.length > 0) {
         content += `---\n\n`
-        content += `## 🔥 流行语解释\n\n`
+        content += `## 流行语解释\n\n`
         aiResult.trendingPhrases.forEach((item) => {
           content += `* **${item.phrase}** - ${item.meaning}\n`
           if (item.context) {
@@ -1235,7 +1242,7 @@ status: 🟢 待整理
 
     if (topConfig?.saveSubtitles !== false && subtitles) {
       content += `---\n\n`
-      content += `## 📄 字幕原文\n\n`
+      content += `## 字幕原文\n\n`
       const subtitleText = aiConfig.bilibiliPromptTemplate === "english" && aiResult.originalTextWithBold
         ? aiResult.originalTextWithBold
         : subtitles
@@ -1243,7 +1250,7 @@ status: 🟢 待整理
     }
 
     content += `---\n\n`
-    content += `## 📎 相关信息\n\n`
+    content += `## 相关信息\n\n`
     content += `- **视频地址**: ${window.location.href}\n`
     content += `- **导出时间**: ${new Date().toLocaleString("zh-CN")}\n`
 
@@ -1306,9 +1313,12 @@ async function exportSmartClipSmart() {
     const smartClipAdapter = currentAdapter as SmartClipAdapter
 
     // 1. 确认提示
-    const confirmed = window.confirm(
-      "🤖 SmartClip 智能剪藏\n\n插件将使用 AI 智能分析当前网页，生成结构化摘要、提取关键信息并进行分类。\n\n是否继续？"
-    )
+    const confirmed = await showMemflowConfirm({
+      title: "SmartClip 智能剪藏",
+      description: "将使用 AI 分析当前网页，生成结构化摘要、关键信息和分类。",
+      icon: "sparkles",
+      confirmText: "开始剪藏"
+    })
     if (!confirmed) return
 
     showToast("正在提取网页内容...", "warning")
@@ -1325,8 +1335,13 @@ async function exportSmartClipSmart() {
 
     // 3. 检查 API 配置
     const { aiApiConfig } = await chrome.storage.sync.get("aiApiConfig")
-    if (!aiApiConfig?.enabled || !aiApiConfig?.apiKey) {
-      showToast("请在设置中配置 AI API", "error")
+    const isLocalProvider = aiApiConfig?.provider === "local"
+    if (!aiApiConfig?.enabled) {
+      showToast("请在设置中启用 AI API", "error")
+      return
+    }
+    if (!isLocalProvider && !aiApiConfig?.apiKey) {
+      showToast("请在设置中配置 AI API Key", "error")
       return
     }
 
@@ -1361,18 +1376,18 @@ source: [[网页剪藏]]
 original_url: "${window.location.href}"
 tags: [${tags}]
 category: ${aiMetadata.category}
-status: 🟢 待整理
+status: 待整理
 ---`
 
     let content = ""
 
     // 标题
     content += `# ${aiMetadata.title}\n\n`
-    content += `> 🤖 由 SmartClip AI 智能剪藏\n\n`
+    content += `> 由 SmartClip AI 智能剪藏\n\n`
 
     // 元数据信息
     content += `---\n\n`
-    content += `## 📋 网页信息\n\n`
+    content += `## 网页信息\n\n`
     if (metadata.author) {
       content += `- **作者**: ${metadata.author}\n`
     }
@@ -1393,12 +1408,12 @@ status: 🟢 待整理
 
     // AI 摘要
     content += `---\n\n`
-    content += `## 💡 AI 摘要\n\n`
+    content += `## AI 摘要\n\n`
     content += `${aiMetadata.summary}\n\n`
 
     // 关键词
     content += `---\n\n`
-    content += `## 🏷️ 关键词\n\n`
+    content += `## 关键词\n\n`
     content += aiMetadata.keywords.join(", ") + "\n\n"
 
     // 高亮内容
@@ -1409,11 +1424,11 @@ status: 🟢 待整理
 
     if (aiHighlights.length > 0) {
       content += `---\n\n`
-      content += `## ⭐ 高亮内容\n\n`
+      content += `## 高亮内容\n\n`
       aiHighlights.forEach((h: any, i) => {
         content += `${i + 1}. ${h.text}\n`
         if (h.note) {
-          content += `   > 💡 想法: ${h.note}\n`
+          content += `   > 想法: ${h.note}\n`
         }
       })
       content += "\n"
@@ -1421,7 +1436,7 @@ status: 🟢 待整理
 
     // 网页正文
     content += `---\n\n`
-    content += `## 📄 网页正文\n\n`
+    content += `## 网页正文\n\n`
 
     // 限制内容长度
     const rawContent = conversation.messages[0]?.content || ""
@@ -1433,7 +1448,7 @@ status: 🟢 待整理
 
     // 底部信息
     content += `---\n\n`
-    content += `## 📎 相关信息\n\n`
+    content += `## 相关信息\n\n`
     content += `- **原文链接**: ${window.location.href}\n`
     content += `- **剪藏时间**: ${new Date().toLocaleString("zh-CN")}\n`
 
@@ -1507,9 +1522,12 @@ async function exportSmart() {
     }
 
     // 1. 确认提示
-    const confirmed = window.confirm(
-      "🤖 智能导出模式\n\n插件将通过你配置的第三方大语言模型接口来生成当前网页上记录的标题、摘要和分类。\n\n是否继续？"
-    )
+    const confirmed = await showMemflowConfirm({
+      title: "智能导出模式",
+      description: "将通过已配置的大语言模型接口生成当前内容的标题、摘要和分类。",
+      icon: "sparkles",
+      confirmText: "开始分析"
+    })
     if (!confirmed) return
 
     showToast("正在请求 AI 分析对话...", "warning")
@@ -1614,13 +1632,158 @@ function showToast(
   }, 3000)
 }
 
+type MemflowConfirmIcon = "captions" | "sparkles"
+
+interface MemflowConfirmOptions {
+  title: string
+  description: string
+  details?: string
+  question?: string
+  icon?: MemflowConfirmIcon
+  confirmText?: string
+  cancelText?: string
+}
+
+function createMemflowIcon(icon: MemflowConfirmIcon = "sparkles"): string {
+  const icons: Record<MemflowConfirmIcon, string> = {
+    captions: `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <rect x="3" y="5" width="18" height="14" rx="3"></rect>
+        <path d="M7 10h4"></path>
+        <path d="M13 10h4"></path>
+        <path d="M7 14h7"></path>
+        <path d="M16 14h1"></path>
+      </svg>
+    `,
+    sparkles: `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 3l1.7 4.6L18 9.2l-4.3 1.7L12 15l-1.7-4.1L6 9.2l4.3-1.6L12 3z"></path>
+        <path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z"></path>
+        <path d="M5 13l.7 1.8L8 15.5l-2.3.7L5 18l-.7-1.8L2 15.5l2.3-.7L5 13z"></path>
+      </svg>
+    `
+  }
+
+  return icons[icon]
+}
+
+function showMemflowConfirm(options: MemflowConfirmOptions): Promise<boolean> {
+  injectStyles()
+
+  const existingDialog = document.querySelector(".memflow-confirm-backdrop")
+  if (existingDialog) {
+    existingDialog.remove()
+  }
+
+  return new Promise((resolve) => {
+    const backdrop = document.createElement("div")
+    backdrop.className = "memflow-confirm-backdrop"
+
+    const dialog = document.createElement("div")
+    dialog.className = "memflow-confirm"
+    dialog.setAttribute("role", "dialog")
+    dialog.setAttribute("aria-modal", "true")
+    dialog.setAttribute("aria-labelledby", "memflow-confirm-title")
+
+    const header = document.createElement("div")
+    header.className = "memflow-confirm-header"
+
+    const iconWrap = document.createElement("div")
+    iconWrap.className = "memflow-confirm-icon"
+    iconWrap.innerHTML = createMemflowIcon(options.icon)
+
+    const title = document.createElement("div")
+    title.id = "memflow-confirm-title"
+    title.className = "memflow-confirm-title"
+    title.textContent = options.title
+
+    header.appendChild(iconWrap)
+    header.appendChild(title)
+
+    const description = document.createElement("p")
+    description.className = "memflow-confirm-description"
+    description.textContent = options.description
+
+    dialog.appendChild(header)
+    dialog.appendChild(description)
+
+    if (options.details) {
+      const details = document.createElement("div")
+      details.className = "memflow-confirm-details"
+
+      const detailsIcon = document.createElement("span")
+      detailsIcon.className = "memflow-confirm-details-icon"
+      detailsIcon.innerHTML = createMemflowIcon("captions")
+
+      const detailsText = document.createElement("span")
+      detailsText.textContent = options.details
+
+      details.appendChild(detailsIcon)
+      details.appendChild(detailsText)
+      dialog.appendChild(details)
+    }
+
+    if (options.question) {
+      const question = document.createElement("p")
+      question.className = "memflow-confirm-question"
+      question.textContent = options.question
+      dialog.appendChild(question)
+    }
+
+    const actions = document.createElement("div")
+    actions.className = "memflow-confirm-actions"
+
+    const cancelButton = document.createElement("button")
+    cancelButton.type = "button"
+    cancelButton.className = "memflow-confirm-button memflow-confirm-cancel"
+    cancelButton.textContent = options.cancelText || "取消"
+
+    const confirmButton = document.createElement("button")
+    confirmButton.type = "button"
+    confirmButton.className = "memflow-confirm-button memflow-confirm-primary"
+    confirmButton.textContent = options.confirmText || "确定"
+
+    actions.appendChild(cancelButton)
+    actions.appendChild(confirmButton)
+    dialog.appendChild(actions)
+    backdrop.appendChild(dialog)
+    document.body.appendChild(backdrop)
+
+    const finish = (confirmed: boolean) => {
+      document.removeEventListener("keydown", handleKeyDown)
+      backdrop.remove()
+      resolve(confirmed)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        finish(false)
+      }
+      if (event.key === "Enter") {
+        finish(true)
+      }
+    }
+
+    cancelButton.addEventListener("click", () => finish(false))
+    confirmButton.addEventListener("click", () => finish(true))
+    backdrop.addEventListener("click", (event) => {
+      if (event.target === backdrop) {
+        finish(false)
+      }
+    })
+    document.addEventListener("keydown", handleKeyDown)
+
+    requestAnimationFrame(() => confirmButton.focus())
+  })
+}
+
 function showVideoProgress(step: 1 | 2 | 3, extraMessage?: string) {
   console.log("[Memflow] 进度: 步骤", step)
 
   const stepMessages = [
-    "📥 提取字幕中...",
-    "🤖 AI 分析中..." + (extraMessage ? ` ${extraMessage}` : ""),
-    "💾 导出文件中..."
+    "提取字幕中...",
+    "AI 分析中..." + (extraMessage ? ` ${extraMessage}` : ""),
+    "导出文件中..."
   ]
 
   const currentMessage = stepMessages[step - 1] || `步骤 ${step}`
@@ -1668,6 +1831,146 @@ function injectStyles() {
     .memflow-toast-success { border-left: 3px solid #10b981 !important; }
     .memflow-toast-error { border-left: 3px solid #ef4444 !important; }
     .memflow-toast-warning { border-left: 3px solid #f59e0b !important; }
+
+    .memflow-confirm-backdrop {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 2147483647 !important;
+      display: flex !important;
+      align-items: flex-start !important;
+      justify-content: center !important;
+      padding: 104px 24px 24px !important;
+      background: rgba(0, 0, 0, 0.48) !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    }
+
+    .memflow-confirm {
+      width: min(520px, calc(100vw - 48px)) !important;
+      padding: 22px !important;
+      color: #f5f5f4 !important;
+      background: #1f1f1f !important;
+      border: 1px solid rgba(255, 255, 255, 0.14) !important;
+      border-radius: 10px !important;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45) !important;
+    }
+
+    .memflow-confirm-header {
+      display: flex !important;
+      align-items: center !important;
+      gap: 12px !important;
+      margin-bottom: 16px !important;
+    }
+
+    .memflow-confirm-icon {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 34px !important;
+      height: 34px !important;
+      flex: 0 0 34px !important;
+      color: #f59e0b !important;
+      background: rgba(245, 158, 11, 0.12) !important;
+      border: 1px solid rgba(245, 158, 11, 0.28) !important;
+      border-radius: 8px !important;
+    }
+
+    .memflow-confirm-icon svg,
+    .memflow-confirm-details-icon svg {
+      width: 20px !important;
+      height: 20px !important;
+      fill: none !important;
+      stroke: currentColor !important;
+      stroke-width: 1.8 !important;
+      stroke-linecap: round !important;
+      stroke-linejoin: round !important;
+    }
+
+    .memflow-confirm-title {
+      font-size: 17px !important;
+      line-height: 1.35 !important;
+      font-weight: 650 !important;
+      letter-spacing: 0 !important;
+    }
+
+    .memflow-confirm-description {
+      margin: 0 0 14px !important;
+      color: #e7e5e4 !important;
+      font-size: 14px !important;
+      line-height: 1.7 !important;
+    }
+
+    .memflow-confirm-details {
+      display: flex !important;
+      gap: 10px !important;
+      align-items: flex-start !important;
+      margin-top: 14px !important;
+      padding: 12px !important;
+      color: #d6d3d1 !important;
+      background: rgba(255, 255, 255, 0.06) !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      border-radius: 8px !important;
+      font-size: 13px !important;
+      line-height: 1.65 !important;
+    }
+
+    .memflow-confirm-question {
+      margin: 16px 0 0 !important;
+      color: #f5f5f4 !important;
+      font-size: 14px !important;
+      line-height: 1.6 !important;
+      font-weight: 520 !important;
+    }
+
+    .memflow-confirm-details-icon {
+      display: inline-flex !important;
+      color: #fbbf24 !important;
+      flex: 0 0 auto !important;
+      margin-top: 1px !important;
+    }
+
+    .memflow-confirm-details-icon svg {
+      width: 18px !important;
+      height: 18px !important;
+    }
+
+    .memflow-confirm-actions {
+      display: flex !important;
+      justify-content: flex-end !important;
+      gap: 10px !important;
+      margin-top: 22px !important;
+    }
+
+    .memflow-confirm-button {
+      min-width: 82px !important;
+      height: 36px !important;
+      padding: 0 14px !important;
+      border-radius: 8px !important;
+      font-size: 14px !important;
+      font-weight: 520 !important;
+      cursor: pointer !important;
+      outline: none !important;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease !important;
+    }
+
+    .memflow-confirm-button:focus-visible {
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.24) !important;
+    }
+
+    .memflow-confirm-button:hover {
+      transform: translateY(-1px) !important;
+    }
+
+    .memflow-confirm-cancel {
+      color: #e7e5e4 !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+      border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    }
+
+    .memflow-confirm-primary {
+      color: #1c1917 !important;
+      background: #f59e0b !important;
+      border: 1px solid #f59e0b !important;
+    }
   `
   document.head.appendChild(style)
   console.log("[Memflow] CSS 样式已注入")
