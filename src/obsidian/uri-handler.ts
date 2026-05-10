@@ -1,4 +1,5 @@
 import type { Metadata } from "../types"
+import { normalizeFolderPath } from "../utils/folder-history"
 
 export interface ObsidianConfig {
   vaultName: string
@@ -53,8 +54,9 @@ export class ObsidianURIHandler {
       console.log("🔄 exportToObsidian 开始执行")
 
       const filename = this.generateFilename(metadata)
-      const filePath = this.config.defaultFolder
-        ? `${this.config.defaultFolder}/${filename}`.replace(/\\/g, "/")
+      const defaultFolder = normalizeFolderPath(this.config.defaultFolder)
+      const filePath = defaultFolder
+        ? `${defaultFolder}/${filename}`.replace(/\\/g, "/")
         : filename.replace(/\\/g, "/")
 
       console.log("📂 目标路径:", filePath)

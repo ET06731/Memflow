@@ -1,6 +1,11 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 
 import type { AIApiConfig, ObsidianConfig } from "./types/index"
+import {
+  buildFolderHistory,
+  DEFAULT_FOLDER_HISTORY_KEY,
+  normalizeFolderPath
+} from "./utils/folder-history"
 
 type Lang = "zh" | "en"
 
@@ -81,7 +86,7 @@ function Popup() {
 
   const [config, setConfig] = useState<ObsidianConfig>({
     vaultName: "",
-    defaultFolder: lang === "zh" ? "AI对话" : "AI-Chats",
+    defaultFolder: "收藏夹",
     fileNameFormat: "{{date}}-{{title}}",
     contentFormat: "callout",
     exportMethod: "download",
@@ -108,22 +113,64 @@ function Popup() {
 
   const [saved, setSaved] = useState(false)
   const [showTemplateSettings, setShowTemplateSettings] = useState(false)
+  const [showFolderDropdown, setShowFolderDropdown] = useState(false)
+  const [folderHistory, setFolderHistory] = useState<string[]>([])
+  const folderDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    chrome.storage.sync.get(["obsidianConfig", "templateConfig"], (data) => {
-      if (data.obsidianConfig) {
-        setConfig(data.obsidianConfig)
+    if (!showFolderDropdown) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (folderDropdownRef.current && !folderDropdownRef.current.contains(e.target as Node)) {
+        setShowFolderDropdown(false)
       }
-      if (data.templateConfig) {
-        setTemplateConfig(data.templateConfig)
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [showFolderDropdown])
+
+  useEffect(() => {
+    chrome.storage.sync.get(
+      ["obsidianConfig", "templateConfig", DEFAULT_FOLDER_HISTORY_KEY],
+      (data) => {
+        if (data.obsidianConfig) {
+          setConfig({
+            ...data.obsidianConfig,
+            defaultFolder: normalizeFolderPath(
+              data.obsidianConfig.defaultFolder || ""
+            )
+          })
+        }
+        if (data.templateConfig) {
+          setTemplateConfig(data.templateConfig)
+        }
+        if (Array.isArray(data[DEFAULT_FOLDER_HISTORY_KEY])) {
+          setFolderHistory(
+            buildFolderHistory("", data[DEFAULT_FOLDER_HISTORY_KEY])
+          )
+        }
       }
-    })
+    )
   }, [])
 
   const saveConfig = () => {
+    const normalizedConfig = {
+      ...config,
+      defaultFolder: normalizeFolderPath(config.defaultFolder)
+    }
+    const nextFolderHistory = buildFolderHistory(
+      normalizedConfig.defaultFolder,
+      folderHistory
+    )
+
     chrome.storage.sync.set(
-      { obsidianConfig: config, templateConfig: templateConfig },
+      {
+        obsidianConfig: normalizedConfig,
+        templateConfig: templateConfig,
+        [DEFAULT_FOLDER_HISTORY_KEY]: nextFolderHistory
+      },
       () => {
+        setConfig(normalizedConfig)
+        setFolderHistory(nextFolderHistory)
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
       }
@@ -138,6 +185,7 @@ function Popup() {
     templateOptions.find(
       (o) => o.id === templateConfig.bilibili.templateType
     ) || templateOptions[0]
+  const folderHistoryOptions = folderHistory
 
   return (
     <>
@@ -452,6 +500,120 @@ function Popup() {
 
         .form-input:focus {
           border-color: rgba(245, 158, 11, 0.4);
+        }
+
+        .folder-history-select {
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          padding-right: 36px;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f4f4f5' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 14px center;
+          background-size: 12px;
+        }
+
+        .folder-history-select option {
+          background: #252525;
+          color: #f4f4f5;
+        }
+
+        .folder-combo-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .folder-combo-input {
+          width: 100%;
+          padding: 9px 36px 9px 12px;
+          background: rgba(0, 0, 0, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          color: #eee;
+          font-size: 13px;
+          box-sizing: border-box;
+          outline: none;
+          transition: border-color 0.2s;
+        }
+
+        .folder-combo-input:focus {
+          border-color: rgba(245, 158, 11, 0.4);
+        }
+
+        .folder-combo-dropdown-btn {
+          position: absolute;
+          right: 2px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 30px;
+          height: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: #888;
+          border-radius: 0 6px 6px 0;
+        }
+
+        .folder-combo-dropdown-btn:hover {
+          color: #f59e0b;
+        }
+
+        .folder-combo-dropdown {
+          position: absolute;
+          top: calc(100% + 4px);
+          left: 0;
+          right: 0;
+          z-index: 100;
+          background: #1a1a1a;
+          border: 1px solid rgba(245, 158, 11, 0.3);
+          border-radius: 8px;
+          max-height: 200px;
+          overflow-y: auto;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+
+        .folder-combo-dropdown::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .folder-combo-dropdown::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .folder-combo-dropdown::-webkit-scrollbar-thumb {
+          background: rgba(245, 158, 11, 0.3);
+          border-radius: 3px;
+        }
+
+        .folder-combo-option {
+          padding: 8px 12px;
+          font-size: 13px;
+          cursor: pointer;
+          transition: background 0.15s;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .folder-combo-option:hover {
+          background: rgba(245, 158, 11, 0.15);
+        }
+
+        .folder-combo-option.selected {
+          background: rgba(245, 158, 11, 0.2);
+          color: #f59e0b;
+        }
+
+        .input-hint {
+          display: block;
+          margin-top: 6px;
+          font-size: 11px;
+          color: #777;
+          line-height: 1.4;
         }
 
         .save-btn {
@@ -813,15 +975,57 @@ function Popup() {
               </div>
               <div className="form-group">
                 <label className="form-label">{t.defaultFolder}</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={config.defaultFolder}
-                  onChange={(e) =>
-                    setConfig({ ...config, defaultFolder: e.target.value })
-                  }
-                  placeholder={t.defaultFolderPlaceholder}
-                />
+                <div className="folder-combo-wrapper" ref={folderDropdownRef}>
+                  <input
+                    className="folder-combo-input"
+                    type="text"
+                    value={config.defaultFolder}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        defaultFolder: normalizeFolderPath(e.target.value)
+                      })
+                    }
+                    onFocus={() => setShowFolderDropdown(true)}
+                    placeholder={t.defaultFolderPlaceholder}
+                  />
+                  <button
+                    className="folder-combo-dropdown-btn"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      setShowFolderDropdown((v) => !v)
+                    }}>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+                  {showFolderDropdown && folderHistoryOptions.length > 0 && (
+                    <div className="folder-combo-dropdown">
+                      {folderHistoryOptions.map((folder) => (
+                        <div
+                          key={folder}
+                          className={`folder-combo-option ${folder === config.defaultFolder ? "selected" : ""}`}
+                          onMouseDown={(e) => {
+                            e.preventDefault()
+                            setConfig({ ...config, defaultFolder: normalizeFolderPath(folder) })
+                            setShowFolderDropdown(false)
+                          }}
+                          title={folder}>
+                          {folder}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="template-section">
               <div
