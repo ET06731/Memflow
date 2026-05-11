@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import iconUrl from "url:../assets/icon.png"
+import packageJson from "../package.json"
 
 import type { AIApiConfig, MemflowHelperConfig, ObsidianConfig } from "./types/index"
 import { AIService } from "./services/ai-api"
@@ -26,6 +27,8 @@ interface TemplateConfig {
 }
 
 type Lang = "zh" | "en"
+
+const EXTENSION_VERSION = packageJson.version
 
 const i18n = {
   zh: {
@@ -1528,7 +1531,7 @@ function Options() {
                   MemFlow
                 </h3>
                 <p style={{ color: "#888", marginBottom: "32px" }}>
-                  Extension v1.1.0 (PRO)
+                  {`Extension v${EXTENSION_VERSION}`}
                 </p>
                 <p
                   style={{

@@ -2262,30 +2262,40 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
   highlightActionPopup = document.createElement("div")
   highlightActionPopup.id = "memflow-highlight-action"
   highlightActionPopup.style.cssText = `
+    all: initial;
+    box-sizing: border-box;
     position: fixed;
     top: ${rect.bottom + 8}px;
     left: ${rect.left}px;
     z-index: 2147483647;
     display: flex;
+    align-items: center;
     gap: 8px;
     background: #fdfbf7;
     border: 1px solid rgba(0,0,0,0.06);
     border-radius: 20px;
     padding: 6px 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 4px rgba(0,0,0,0.04);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1;
   `
 
   // 删除按钮
   const deleteBtn = document.createElement("button")
   deleteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>`
   deleteBtn.style.cssText = `
+    all: unset;
+    box-sizing: border-box;
     width: 22px;
     height: 22px;
+    flex: 0 0 22px;
+    min-width: 22px;
+    min-height: 22px;
     background: transparent;
     border: none;
     cursor: pointer;
     border-radius: 50%;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
@@ -2304,13 +2314,18 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
   const noteBtn = document.createElement("button")
   noteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`
   noteBtn.style.cssText = `
+    all: unset;
+    box-sizing: border-box;
     width: 22px;
     height: 22px;
+    flex: 0 0 22px;
+    min-width: 22px;
+    min-height: 22px;
     background: transparent;
     border: none;
     cursor: pointer;
     border-radius: 50%;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
@@ -2329,14 +2344,20 @@ function showHighlightActionMenu(el: HTMLElement, highlightId: string) {
   colors.forEach((c) => {
     const colorBtn = document.createElement("button")
     colorBtn.style.cssText = `
+      all: unset;
+      box-sizing: border-box;
       width: 18px;
       height: 18px;
+      flex: 0 0 18px;
+      min-width: 18px;
+      min-height: 18px;
       border-radius: 50%;
       background: ${c};
       border: 1px solid rgba(0,0,0,0.1);
       cursor: pointer;
       transition: all 0.2s;
       box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      display: block;
     `
     colorBtn.onclick = (e) => {
       e.stopPropagation()
@@ -2528,17 +2549,22 @@ function showHighlightButton(rect: DOMRect, text: string) {
   highlightPopup = document.createElement("div")
   highlightPopup.id = "memflow-highlight-popup"
   highlightPopup.style.cssText = `
+    all: initial;
+    box-sizing: border-box;
     position: fixed;
     top: ${rect.top - 40}px;
     left: ${rect.left + rect.width / 2 - 40}px;
     z-index: 2147483647;
     display: flex;
+    align-items: center;
     gap: 6px;
     background: #fdfbf7;
     border: 1px solid rgba(0,0,0,0.06);
     border-radius: 16px;
     padding: 6px 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 4px rgba(0,0,0,0.04);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1;
   `
 
   const colors = [
@@ -2551,14 +2577,20 @@ function showHighlightButton(rect: DOMRect, text: string) {
   colors.forEach((c) => {
     const btn = document.createElement("button")
     btn.style.cssText = `
+      all: unset;
+      box-sizing: border-box;
       width: 18px;
       height: 18px;
+      flex: 0 0 18px;
+      min-width: 18px;
+      min-height: 18px;
       border-radius: 50%;
       background: ${c.color};
       border: 1px solid rgba(0,0,0,0.1);
       cursor: pointer;
       transition: all 0.2s ease;
       box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      display: block;
     `
     btn.onmouseover = () => {
       btn.style.transform = "scale(1.15)"
