@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Memflow** is a browser extension (Chrome MV3) that exports AI conversations from platforms like DeepSeek, ChatGPT, and Kimi to Obsidian in Markdown format.
+**Memflow** is a browser extension (Chrome MV3) that clips and summarizes web content and videos, generating AI-powered summaries for smart content capture.
 
 - **Framework**: [Plasmo](https://www.plasmo.com/) - Modern browser extension framework
 - **Language**: TypeScript
@@ -237,84 +237,75 @@ describe("stripHtml", () => {
 
 **DOM Testing**: Use `@testing-library/react` for React component tests and `jsdom` for DOM manipulation tests.
 
-## Adding a New AI Platform
+## Release Workflow
 
-To support a new AI platform (e.g., Gemini, Claude):
+### Version Rules
 
-1. **Analyze the platform**: Use browser dev tools to identify:
-   - Message container selectors
-   - User vs AI message differentiation
-   - Input box and send button selectors
+- **Major Version (x.0.0)**: Breaking changes, architecture refactoring, significant feature additions, or UI redesign
+- **Minor Version (x.y.0)**: New features, platform support additions, significant functionality improvements
+- **Patch Version (x.y.z)**: Bug fixes, performance improvements, minor UI tweaks, documentation updates
 
-2. **Add selectors** to `src/config/selectors.json`:
-   ```json
-   "gemini": {
-     "messageContainer": "div[class*='message']",
-     "userMessage": "[data-role='user']",
-     "aiMessage": "[data-role='assistant']",
-     "inputBox": "textarea",
-     "sendButton": "button[type='submit']"
-   }
-   ```
+### Version Update Sequence
 
-3. **Create adapter** in `src/contents/adapters/gemini.ts`
+1. Update `package.json` version field
+2. Update `AGENTS.md` version (if documented)
+3. Create git tag with version prefix `v`
+4. Push and create GitHub Release
 
-4. **Register adapter** in `src/contents/adapters/index.ts`:
-   ```typescript
-   import { createGeminiAdapter } from "./gemini"
-   
-   export function detectPlatformAdapter(): IAdapter | null {
-     const adapters = [
-       // ... existing adapters
-       createGeminiAdapter()
-     ]
-     // ...
-   }
-   ```
+### Release Process
 
-5. **Update content script config** in `src/contents/index.tsx`:
-   ```typescript
-   export const config: PlasmoCSConfig = {
-     matches: [
-       // ... existing patterns
-       "https://gemini.google.com/*"
-     ]
-   }
-   ```
+```bash
+# 1. Build and test
+pnpm test
+pnpm build
 
-6. **Update manifest** in `package.json`:
-   ```json
-   "host_permissions": [
-     // ... existing permissions
-     "https://gemini.google.com/*"
-   ]
-   ```
+# 2. Update version in package.json (manually edit)
+# Major: x.0.0, Minor: x.y.0, Patch: x.y.z
 
-### Toolbar Button Location
+# 3. Package extension
+pnpm package
 
-The export button is injected into AI chat platforms using multiple strategies (in order):
+# 4. Create git tag and push
+git add -A
+git commit -m "Release v{version}"
+git tag -a v{version} -m "Release v{version}"
+git push origin main --tags
 
-1. **Share Button Detection** - Looks for share buttons and inserts before them:
-   - `[data-testid='share-chat-button']` (ChatGPT)
-   - `button[aria-label*='Share']` or `button[aria-label*='分享']`
-   - Generic `button[class*='share']`
+# 5. Create GitHub Release via CLI
+gh release create v{version} \
+  --title "Memflow v{version}" \
+  --notes "Release notes here" \
+  build/chrome-mv3-prod.zip
+```
 
-2. **Header Right Area** - Searches for common header patterns:
-   - ChatGPT: `.sticky.top-0 .flex.items-center:last-child`
-   - Kimi: `.header-right`, `.toolbar`, `[class*='header'] [class*='action']`
-   - Gemini: `header div[role='toolbar']`, `.gb_Ld`
-   - DeepSeek: `header .header-right`, `header .header-actions`
-   - Generic: `header`, `.header`, `[class*='Header']`
+### Release Checklist
 
-3. **Fallback Position** - If no toolbar found, button is placed in fixed position at top-right (80px from top, 20px from right)
+- [ ] All tests pass
+- [ ] Build completes without errors
+- [ ] Package generates `build/chrome-mv3-prod.zip`
+- [ ] Version updated in `package.json`
+- [ ] Git tag created with `v` prefix
+- [ ] GitHub Release created with ZIP attachment
+- [ ] CHANGELOG updated (if exists)
 
-### Button Visibility
+### Hotfix Process
 
-The button has these styles to ensure visibility:
-- **Background**: Amber/orange (`rgba(245, 158, 11, 0.9)`) with border
-- **Position**: `z-index: 9999` to stay on top
-- **Hover**: Brightens and lifts with shadow
-- **Fallback**: Fixed position with animation for attention
+For critical bug fixes between regular releases:
+
+```bash
+# Create hotfix branch
+git checkout -b hotfix/v{patch-version}
+
+# Make fixes, update version to patch
+# Commit and tag
+git commit -m "Hotfix v{version}"
+git tag v{version}
+
+# Merge to main and push
+git checkout main
+git merge hotfix/v{version}
+git push origin main --tags
+```
 
 ### Debugging Button Issues
 

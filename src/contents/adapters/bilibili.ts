@@ -2,6 +2,12 @@ import type { Conversation, Message } from "../../types"
 import { BaseAdapter } from "./base-adapter"
 import type { SelectorConfig } from "./base-adapter"
 
+interface BilibiliSubtitleCache {
+  videoKey: string
+  subtitleUrl?: string
+  body: any[]
+}
+
 /**
  * BiliBili 视频适配器
  * 提取视频基本信息、字幕内容，用于导出到 Obsidian
@@ -522,6 +528,24 @@ export class BiliBiliAdapter extends BaseAdapter {
       }
     }
 
+    const writeCache = (subtitleUrl: string, body: any[]) => {
+      if (!Array.isArray(body) || body.length === 0) {
+        return
+      }
+
+      const videoKey = this.getCurrentVideoKey()
+      if (!videoKey) {
+        console.warn("[Memflow Bilibili Hook] 当前视频标识为空，跳过字幕缓存写入")
+        return
+      }
+
+      store.__memflowSubtitleCache = {
+        videoKey,
+        subtitleUrl,
+        body
+      } satisfies BilibiliSubtitleCache
+    }
+
     // 拦截 history.pushState 和 history.replaceState
     const origPushState = history.pushState
     history.pushState = function (...args) {
@@ -567,12 +591,12 @@ export class BiliBiliAdapter extends BaseAdapter {
           xhr.addEventListener("load", () => {
             try {
               const json = JSON.parse(xhr.responseText)
-              if (json?.body?.length > 0 && !store.__memflowSubtitleCache) {
+              if (json?.body?.length > 0) {
                 console.log(
                   "[Memflow Bilibili Hook] XHR 拦截字幕:",
                   capturedUrl
                 )
-                store.__memflowSubtitleCache = json.body
+                writeCache(capturedUrl, json.body)
               }
             } catch (e) {
               /* ignore */
@@ -601,9 +625,9 @@ export class BiliBiliAdapter extends BaseAdapter {
         try {
           const clone = res.clone()
           const json = await clone.json()
-          if (json?.body?.length > 0 && !store.__memflowSubtitleCache) {
+          if (json?.body?.length > 0) {
             console.log("[Memflow Bilibili Hook] fetch 拦截字幕:", url)
-            store.__memflowSubtitleCache = json.body
+            writeCache(url, json.body)
           }
         } catch (e) {
           /* ignore */
@@ -663,13 +687,39 @@ export class BiliBiliAdapter extends BaseAdapter {
     withTimestamp: boolean = false,
     videoUrl?: string
   ): Promise<string> {
-    const cached = (window as any).__memflowSubtitleCache
-    if (cached && Array.isArray(cached) && cached.length > 0) {
+    const cached = (window as any).__memflowSubtitleCache as
+      | BilibiliSubtitleCache
+      | any[]
+      | null
+    const currentVideoKey = this.getCurrentVideoKey()
+
+    if (Array.isArray(cached) && cached.length > 0) {
       console.log(
         "[Memflow Bilibili] 方案A: 从 hook 缓存获取字幕，条数:",
         cached.length
       )
       return this.formatSubtitleArray(cached, withTimestamp, videoUrl)
+    }
+
+    if (
+      cached &&
+      typeof cached === "object" &&
+      Array.isArray(cached.body) &&
+      cached.body.length > 0
+    ) {
+      if (cached.videoKey === currentVideoKey) {
+        console.log("[Memflow Bilibili] 命中当前视频缓存，等待 API 字幕列表校验")
+      } else {
+        console.warn(
+          "[Memflow Bilibili] 缓存字幕与当前视频不匹配，丢弃旧缓存",
+          {
+            cachedVideoKey: cached.videoKey,
+            currentVideoKey
+          }
+        )
+        ;(window as any).__memflowSubtitleCache = null
+      }
+
     }
 
     console.log("[Memflow Bilibili] 方案A 未命中，尝试方案 B...")
@@ -707,13 +757,21 @@ export class BiliBiliAdapter extends BaseAdapter {
         "cid=",
         cid
       )
-      const result = await this.fetchSubtitlesFromApi(
-        aid,
-        cid,
+      const resolvedSubtitles = await this.resolveSubtitlesFromApi(aid, cid)
+      const cachedResult = await this.tryCachedSubtitleFirst(
+        cached,
+        resolvedSubtitles,
         withTimestamp,
         videoUrl
       )
-      if (result) return result
+      if (cachedResult) return cachedResult
+
+      const resultFromApi = await this.fetchResolvedSubtitle(
+        resolvedSubtitles,
+        withTimestamp,
+        videoUrl
+      )
+      if (resultFromApi) return resultFromApi
     } else {
       console.warn("[Memflow Bilibili] 方案B: 无法获取 aid/cid")
     }
@@ -932,6 +990,14 @@ export class BiliBiliAdapter extends BaseAdapter {
       const data = await response.json()
 
       if (data.body && data.body.length > 0) {
+        const videoKey = this.getCurrentVideoKey()
+        if (videoKey) {
+          ;(window as any).__memflowSubtitleCache = {
+            videoKey,
+            subtitleUrl: fullUrl,
+            body: data.body
+          } satisfies BilibiliSubtitleCache
+        }
         const text = this.formatSubtitleArray(
           data.body,
           withTimestamp,
@@ -952,6 +1018,14 @@ export class BiliBiliAdapter extends BaseAdapter {
     withTimestamp: boolean,
     videoUrl?: string
   ): Promise<string> {
+    const resolvedSubtitles = await this.resolveSubtitlesFromApi(aid, cid)
+    return this.fetchResolvedSubtitle(resolvedSubtitles, withTimestamp, videoUrl)
+  }
+
+  private async resolveSubtitlesFromApi(
+    aid: string,
+    cid: string
+  ): Promise<any[]> {
     const apisToTry = [
       `https://api.bilibili.com/x/player/wbi/v2?cid=${cid}&aid=${aid}`,
       `https://api.bilibili.com/x/player/v2?cid=${cid}&aid=${aid}`
@@ -986,27 +1060,115 @@ export class BiliBiliAdapter extends BaseAdapter {
           subtitleList.map((s: any) => s.lan_doc || s.lang)
         )
 
-        const preferred =
-          subtitleList.find(
-            (s: any) =>
-              s.lang === "zh-CN" ||
-              s.lang === "zh" ||
-              s.lang === "ai-zh" ||
-              s.lan === "zh-CN" ||
-              s.lan === "zh" ||
-              s.lan === "ai-zh"
-          ) || subtitleList[0]
-
-        const subtitleUrl = preferred?.subtitle_url || preferred?.url
-        if (subtitleUrl) {
-          return await this.fetchSubtitle(subtitleUrl, withTimestamp, videoUrl)
-        }
+        return subtitleList
       } catch (error) {
         console.error("[Memflow Bilibili] API 请求失败:", url, error)
       }
     }
 
-    return ""
+    return []
+  }
+
+  private async tryCachedSubtitleFirst(
+    cached: BilibiliSubtitleCache | any[] | null,
+    subtitleList: any[],
+    withTimestamp: boolean,
+    videoUrl?: string
+  ): Promise<string> {
+    if (
+      !cached ||
+      Array.isArray(cached) ||
+      typeof cached !== "object" ||
+      !Array.isArray(cached.body) ||
+      cached.body.length === 0 ||
+      !cached.subtitleUrl
+    ) {
+      return ""
+    }
+
+    const currentSubtitleUrls = this.extractSubtitleUrls(subtitleList)
+    const cachedSubtitleUrl = this.normalizeSubtitleUrl(cached.subtitleUrl)
+    const matched = currentSubtitleUrls.includes(cachedSubtitleUrl)
+
+    if (!matched) {
+      console.warn("[Memflow Bilibili] 缓存字幕 URL 不在当前视频字幕列表中，丢弃缓存", {
+        cachedSubtitleUrl,
+        currentSubtitleUrls
+      })
+      ;(window as any).__memflowSubtitleCache = null
+      return ""
+    }
+
+    console.log("[Memflow Bilibili] 缓存字幕 URL 校验通过，直接复用当前视频缓存")
+    return this.formatSubtitleArray(cached.body, withTimestamp, videoUrl)
+  }
+
+  private async fetchResolvedSubtitle(
+    subtitleList: any[],
+    withTimestamp: boolean,
+    videoUrl?: string
+  ): Promise<string> {
+    if (!subtitleList || subtitleList.length === 0) {
+      return ""
+    }
+
+    const preferred =
+      subtitleList.find(
+        (s: any) =>
+          s.lang === "zh-CN" ||
+          s.lang === "zh" ||
+          s.lang === "ai-zh" ||
+          s.lan === "zh-CN" ||
+          s.lan === "zh" ||
+          s.lan === "ai-zh"
+      ) || subtitleList[0]
+
+    const subtitleUrl = preferred?.subtitle_url || preferred?.url
+    if (!subtitleUrl) {
+      return ""
+    }
+
+    return this.fetchSubtitle(subtitleUrl, withTimestamp, videoUrl)
+  }
+
+  private extractSubtitleUrls(subtitleList: any[]): string[] {
+    return subtitleList
+      .map((item) => item?.subtitle_url || item?.url || "")
+      .filter(Boolean)
+      .map((url) => this.normalizeSubtitleUrl(url))
+  }
+
+  private normalizeSubtitleUrl(url: string): string {
+    const fullUrl = url.startsWith("http") ? url : `https:${url}`
+    return fullUrl.trim()
+  }
+
+  private getCurrentVideoKey(): string {
+    const info = this.extractVideoInfo()
+    const pathname = window.location.pathname || ""
+    const params = new URLSearchParams(window.location.search)
+    const page = params.get("p") || "1"
+    const bvid = info.bvid || this.extractBvidFromUrl()
+    const aid = info.aid || ""
+    const cid = info.cid || ""
+
+    return [pathname, `p=${page}`, `bvid=${bvid}`, `aid=${aid}`, `cid=${cid}`].join(
+      "|"
+    )
+  }
+
+  private extractBvidFromUrl(): string {
+    const match = window.location.href.match(/\/video\/(BV[\w]+)/)
+    if (match?.[1]) {
+      return match[1]
+    }
+
+    try {
+      const url = new URL(window.location.href)
+      return url.searchParams.get("bvid") || ""
+    } catch (_error) {
+      return ""
+    }
   }
 
   /**

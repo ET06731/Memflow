@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import selectors from "../../../config/selectors.json"
+import { createBiliBiliAdapter } from "../bilibili"
 import { createChatGPTAdapter } from "../chatgpt"
 import { createDeepSeekAdapter } from "../deepseek"
 import { createDoubaoAdapter } from "../doubao"
@@ -159,6 +160,141 @@ describe("Platform Adapters", () => {
       expect(conversation.messages[1].role).toBe("assistant")
       expect(conversation.messages[1].content).toContain("价值函数用于衡量状态或动作的长期收益")
       expect(conversation.messages[1].content).not.toContain("强化学习的价值函数是什么")
+    })
+  })
+
+  describe("Bilibili Adapter", () => {
+    it("should ignore subtitle cache from another video", async () => {
+      window.location.href = "https://www.bilibili.com/video/BV1testCurrent/?p=1"
+      ;(window as any).__INITIAL_STATE__ = {
+        videoData: {
+          title: "当前视频",
+          desc: "测试简介",
+          aid: 123456,
+          cid: 654321,
+          owner: {
+            name: "测试UP主",
+            mid: 1
+          },
+          stat: {},
+          pages: [
+            {
+              cid: 654321
+            }
+          ]
+        }
+      }
+      ;(window as any).__playinfo__ = {
+        data: {
+          cid: 654321
+        }
+      }
+      ;(window as any).__memflowSubtitleCache = {
+        videoKey:
+          "/video/BV1testOther/|p=1|bvid=BV1testOther|aid=111|cid=222",
+        subtitleUrl: "https://example.com/old-subtitle.json",
+        body: [
+          {
+            content: "这是另一条视频的字幕",
+            from: 0
+          }
+        ]
+      }
+
+      const fetchMock = vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          data: {
+            subtitle: {
+              subtitles: []
+            }
+          }
+        })
+      }))
+      vi.stubGlobal("fetch", fetchMock)
+
+      const adapter = createBiliBiliAdapter()
+      const subtitles = await adapter.getSubtitles()
+
+      expect(subtitles).toBe("")
+      expect((window as any).__memflowSubtitleCache).toBeNull()
+      expect(fetchMock).toHaveBeenCalled()
+    })
+
+    it("should ignore cache when subtitle url does not belong to current video", async () => {
+      window.location.href = "https://www.bilibili.com/video/BV1testCurrent/?p=1"
+      ;(window as any).__INITIAL_STATE__ = {
+        videoData: {
+          title: "当前视频",
+          desc: "测试简介",
+          aid: 123456,
+          cid: 654321,
+          owner: {
+            name: "测试UP主",
+            mid: 1
+          },
+          stat: {},
+          pages: [
+            {
+              cid: 654321
+            }
+          ]
+        }
+      }
+      ;(window as any).__playinfo__ = {
+        data: {
+          cid: 654321
+        }
+      }
+      ;(window as any).__memflowSubtitleCache = {
+        videoKey:
+          "/video/BV1testCurrent/|p=1|bvid=BV1testCurrent|aid=123456|cid=654321",
+        subtitleUrl: "https://example.com/stale-subtitle.json",
+        body: [
+          {
+            content: "这是错误缓存里的字幕",
+            from: 0
+          }
+        ]
+      }
+
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: {
+              subtitle: {
+                subtitles: [
+                  {
+                    subtitle_url: "https://example.com/current-subtitle.json",
+                    lang: "zh-CN"
+                  }
+                ]
+              }
+            }
+          })
+        })
+        .mockResolvedValueOnce({
+          json: async () => ({
+            body: [
+              {
+                content: "这是当前视频的真实字幕",
+                from: 0
+              }
+            ]
+          })
+        })
+      vi.stubGlobal("fetch", fetchMock)
+
+      const adapter = createBiliBiliAdapter()
+      const subtitles = await adapter.getSubtitles()
+
+      expect(subtitles).toContain("这是当前视频的真实字幕")
+      expect(subtitles).not.toContain("这是错误缓存里的字幕")
+      expect((window as any).__memflowSubtitleCache.subtitleUrl).toBe(
+        "https://example.com/current-subtitle.json"
+      )
     })
   })
 

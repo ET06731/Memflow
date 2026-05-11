@@ -91,6 +91,8 @@ async function tryMemflowHelperSubtitleFallback(
   videoUrl: string,
   platformLabel: string
 ): Promise<string> {
+  let fallbackToast: ToastHandle | null = null
+
   try {
     const { memflowHelperConfig } =
       await chrome.storage.sync.get("memflowHelperConfig")
@@ -99,15 +101,40 @@ async function tryMemflowHelperSubtitleFallback(
       return ""
     }
 
-    showToast(`未检测到原生字幕，尝试 ${platformLabel} 本地转写...`, "warning")
+    fallbackToast = showToast("正在自动本地转写...", "warning", {
+      persist: true
+    })
     const transcript = await MemflowHelperService.transcribeVideoUrl(
       videoUrl,
       helperConfig,
-      "auto"
+      "auto",
+      {
+        onStageChange: (message) => {
+          fallbackToast?.update(message, "warning", { persist: true })
+        }
+      }
     )
-    return transcript?.trim() || ""
+
+    const finalTranscript = transcript?.trim() || ""
+    if (finalTranscript) {
+      fallbackToast.update("本地转写完成，已获取转写结果", "success", {
+        duration: DEFAULT_TOAST_DURATION
+      })
+    } else {
+      fallbackToast.update("本地转写已完成，但未返回可用文本", "warning", {
+        duration: DEFAULT_TOAST_DURATION
+      })
+    }
+    return finalTranscript
   } catch (error) {
     console.error(`[Memflow ${platformLabel}] MemflowHelper 转写失败:`, error)
+    if (fallbackToast) {
+      fallbackToast.update(
+        `本地转写失败: ${error instanceof Error ? error.message : "未知错误"}`,
+        "error",
+        { duration: LONG_AI_TOAST_DURATION }
+      )
+    }
     return ""
   }
 }
@@ -833,8 +860,8 @@ async function exportBiliBiliSmart() {
 
     // 2. 确认提示
     const confirmed = await showMemflowConfirm({
-      title: "请确认视频自带或支持AI字幕",
-      description: "插件将提取视频字幕并生成总结。",
+      title: "B 站视频智能导出",
+      description: "优先提取原生字幕；如果当前视频没有字幕，会自动回退到本地助手转写。",
       question: "是否继续?",
       icon: "captions",
       confirmText: "继续"
@@ -866,10 +893,10 @@ async function exportBiliBiliSmart() {
     if (!subtitles || subtitles.length === 0) {
       hideVideoProgress()
       showToast(
-        "未检测到字幕。请在播放器底部点击「字幕」或「AI 字幕」按钮后重试",
+        "未检测到可用字幕，本地助手转写也未成功。请确认本地助手可用后重试",
         "error"
       )
-      console.log("[Memflow Bilibili] 未找到字幕，视频可能没有开启字幕")
+      console.log("[Memflow Bilibili] 未找到字幕，本地助手回退也未成功")
       return
     }
 
@@ -1657,16 +1684,54 @@ const LONG_AI_TOAST_DURATION = 60000
 
 interface ToastOptions {
   duration?: number
+  persist?: boolean
+}
+
+interface ToastHandle {
+  dismiss: () => void
+  update: (
+    message: string,
+    type?: "success" | "error" | "warning",
+    options?: ToastOptions
+  ) => void
+}
+
+function clearToastTimer(toast: HTMLElement) {
+  const timerId = Number(toast.dataset.dismissTimerId || "0")
+  if (timerId) {
+    window.clearTimeout(timerId)
+    delete toast.dataset.dismissTimerId
+  }
+}
+
+function animateToastOut(toast: HTMLElement) {
+  clearToastTimer(toast)
+  toast.style.animation = "memflow-toast-slide-out 0.3s ease-out forwards"
+  window.setTimeout(() => toast.remove(), 300)
+}
+
+function scheduleToastDismiss(toast: HTMLElement, options: ToastOptions = {}) {
+  clearToastTimer(toast)
+
+  if (options.persist) {
+    return
+  }
+
+  const duration = options.duration ?? DEFAULT_TOAST_DURATION
+  const timerId = window.setTimeout(() => {
+    animateToastOut(toast)
+  }, duration)
+  toast.dataset.dismissTimerId = String(timerId)
 }
 
 function showToast(
   message: string,
   type: "success" | "error" | "warning" = "success",
   options: ToastOptions = {}
-) {
+): ToastHandle {
   const existingToast = document.querySelector(".memflow-toast")
   if (existingToast) {
-    existingToast.remove()
+    animateToastOut(existingToast as HTMLElement)
   }
 
   const toast = document.createElement("div")
@@ -1674,13 +1739,20 @@ function showToast(
   toast.textContent = message
 
   document.body.appendChild(toast)
+  scheduleToastDismiss(toast, options)
 
-  const duration = options.duration ?? DEFAULT_TOAST_DURATION
-
-  setTimeout(() => {
-    toast.style.animation = "memflow-toast-slide-out 0.3s ease-out forwards"
-    setTimeout(() => toast.remove(), 300)
-  }, duration)
+  return {
+    dismiss: () => {
+      if (toast.isConnected) {
+        animateToastOut(toast)
+      }
+    },
+    update: (nextMessage, nextType = type, nextOptions = options) => {
+      toast.className = `memflow-toast memflow-toast-${nextType}`
+      toast.textContent = nextMessage
+      scheduleToastDismiss(toast, nextOptions)
+    }
+  }
 }
 
 type MemflowConfirmIcon = "captions" | "sparkles"
