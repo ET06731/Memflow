@@ -983,7 +983,7 @@ function Popup() {
                     onChange={(e) =>
                       setConfig({
                         ...config,
-                        defaultFolder: normalizeFolderPath(e.target.value)
+                        defaultFolder: e.target.value
                       })
                     }
                     onFocus={() => setShowFolderDropdown(true)}

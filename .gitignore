@@ -37,3 +37,4 @@ promo-video/
 promo-video/out/
 remotion/
 render/
+.codex/environments/environment.toml
