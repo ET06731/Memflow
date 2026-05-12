@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 
+import { getDefaultObsidianConfig } from "./config/defaults"
 import type { AIApiConfig, ObsidianConfig } from "./types/index"
 import {
   buildFolderHistory,
@@ -84,17 +85,9 @@ function Popup() {
   const lang = detectLanguage()
   const t = i18n[lang]
 
-  const [config, setConfig] = useState<ObsidianConfig>({
-    vaultName: "",
-    defaultFolder: "收藏夹",
-    fileNameFormat: "{{date}}-{{title}}",
-    contentFormat: "callout",
-    exportMethod: "download",
-    autoOpen: true,
-    saveSubtitles: true,
-    saveSubtitlesWithTimestamp: true,
-    enableHighlight: false
-  })
+  const defaultConfig: ObsidianConfig = getDefaultObsidianConfig(lang)
+
+  const [config, setConfig] = useState<ObsidianConfig>(defaultConfig)
 
   const [templateConfig, setTemplateConfig] = useState<TemplateConfig>({
     bilibili: {
@@ -134,6 +127,7 @@ function Popup() {
       (data) => {
         if (data.obsidianConfig) {
           setConfig({
+            ...defaultConfig,
             ...data.obsidianConfig,
             defaultFolder: normalizeFolderPath(
               data.obsidianConfig.defaultFolder || ""

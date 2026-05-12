@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import iconUrl from "url:../assets/icon.png"
 import packageJson from "../package.json"
 
+import { getDefaultObsidianConfig } from "./config/defaults"
 import type { AIApiConfig, MemflowHelperConfig, ObsidianConfig } from "./types/index"
 import { AIService } from "./services/ai-api"
 import { MemflowHelperService } from "./services/memflow-helper"
@@ -184,16 +185,9 @@ function Options() {
   const lang = detectLanguage()
   const t = i18n[lang]
 
-  const [config, setConfig] = useState<ObsidianConfig>({
-    vaultName: "",
-    defaultFolder: lang === "zh" ? "AI对话" : "AI-Chats",
-    fileNameFormat: "{{date}}-{{title}}",
-    contentFormat: "callout",
-    exportMethod: "download",
-    autoOpen: true,
-    saveSubtitles: true,
-    saveSubtitlesWithTimestamp: false
-  })
+  const defaultConfig: ObsidianConfig = getDefaultObsidianConfig(lang)
+
+  const [config, setConfig] = useState<ObsidianConfig>(defaultConfig)
 
   const [aiConfig, setAiConfig] = useState<AIApiConfig>({
     enabled: false,
@@ -269,6 +263,7 @@ function Options() {
       (data) => {
         if (data.obsidianConfig) {
           setConfig({
+            ...defaultConfig,
             ...data.obsidianConfig,
             defaultFolder: normalizeFolderPath(
               data.obsidianConfig.defaultFolder || ""
