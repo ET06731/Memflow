@@ -20,6 +20,20 @@ export interface Highlight {
   color: string
 }
 
+interface CandidateScore {
+  element: Element
+  score: number
+}
+
+interface JsonLdMetadata {
+  title?: string
+  description?: string
+  image?: string
+  siteName?: string
+  publishDate?: string
+  author?: string
+}
+
 const HIGHLIGHT_COLORS = [
   { name: "黄色", value: "yellow", bg: "rgba(255, 255, 0, 0.3)" },
   { name: "绿色", value: "green", bg: "rgba(0, 255, 0, 0.3)" },
@@ -29,6 +43,101 @@ const HIGHLIGHT_COLORS = [
 ]
 
 const STORAGE_KEY = "memflow_highlights"
+const MAX_CONTENT_LENGTH = 100000
+
+const NOISE_SELECTORS = [
+  "script",
+  "style",
+  "noscript",
+  "nav",
+  "header",
+  "footer",
+  "aside",
+  "form",
+  "button",
+  "iframe",
+  "dialog",
+  "[role='navigation']",
+  "[role='banner']",
+  "[role='complementary']",
+  "[role='search']",
+  "[role='dialog']",
+  ".sidebar",
+  ".advertisement",
+  ".ad",
+  ".ads",
+  ".comments",
+  ".comment",
+  ".social-share",
+  ".share",
+  ".popup",
+  ".modal",
+  ".dialog",
+  ".toc",
+  ".table-of-contents",
+  ".author-card",
+  ".author-bio",
+  ".subscription",
+  ".newsletter",
+  ".reaction",
+  "[class*='reaction']",
+  ".like-button",
+  "[class*='like-btn']",
+  ".vote",
+  ".emotion",
+  "[class*='emoji']",
+  "[class*='icon-reward']",
+  "[data-type='like']",
+  "[data-type='reward']",
+  ".fixed-bar",
+  ".float-bar",
+  "[class*='fixed-']",
+  "[class*='float-']",
+  "#comments",
+  ".comments-area",
+  "[class*='comment-area']",
+  ".recommended",
+  "[class*='recommend']",
+  ".related",
+  ".relevant",
+  ".pagination",
+  ".post-navigation",
+  ".nav-links",
+  ".prev-next",
+  ".entry-footer",
+  ".post-footer",
+  ".article-footer",
+  ".read-more",
+  ".more-link"
+]
+
+const NOISE_TEXT_PATTERNS = [
+  /上一篇/,
+  /下一篇/,
+  /上一篇.*下一篇/s,
+  /喜欢作者/,
+  /祝你每天好心情/,
+  /推荐阅读/,
+  /相关阅读/,
+  /相关文章/,
+  /更多推荐/,
+  /继续阅读/,
+  /目录\s*≡?/,
+  /评论区?/,
+  /点赞/,
+  /打赏/,
+  /分享本文/,
+  /继续访问/,
+  /知道了/,
+  /微信扫一扫/,
+  /使用小程序/,
+  /当前内容可能存在未经审核的第三方商业营销信息/,
+  /微信公众平台广告规范指引/,
+  /向上滑动看下一个/,
+  /允许/,
+  /取消/,
+  /空格的键盘/
+]
 
 function getHighlights(): Highlight[] {
   try {
@@ -66,19 +175,60 @@ export class SmartClipAdapter extends BaseAdapter {
   }
 
   private extractMetadata(): WebPageMetadata {
+    const jsonLd = this.extractJsonLdMetadata()
+
     const metadata: WebPageMetadata = {
-      title: this.extractTitle(),
-      author: this.extractAuthor(),
-      description: this.extractDescription(),
-      coverImage: this.extractCoverImage(),
-      publishDate: this.extractPublishDate(),
-      siteName: this.extractSiteName(),
+      title: this.extractTitle(jsonLd),
+      author: this.extractAuthor(jsonLd),
+      description: this.extractDescription(jsonLd),
+      coverImage: this.extractCoverImage(jsonLd),
+      publishDate: this.extractPublishDate(jsonLd),
+      siteName: this.extractSiteName(jsonLd),
       url: window.location.href
     }
     return metadata
   }
 
-  private extractTitle(): string {
+  private getMetaContent(selectors: string[]): string {
+    for (const selector of selectors) {
+      const content = document
+        .querySelector(selector)
+        ?.getAttribute("content")
+        ?.trim()
+
+      if (content) {
+        return content
+      }
+    }
+
+    return ""
+  }
+
+  private toAbsoluteUrl(url: string): string {
+    if (!url) {
+      return ""
+    }
+
+    try {
+      return new URL(url, window.location.href).toString()
+    } catch {
+      return url
+    }
+  }
+
+  private extractTitle(jsonLd: JsonLdMetadata = {}): string {
+    const metaTitle = this.getMetaContent([
+      "meta[property='og:title']",
+      "meta[name='twitter:title']"
+    ])
+    if (metaTitle) {
+      return metaTitle
+    }
+
+    if (jsonLd.title) {
+      return jsonLd.title
+    }
+
     const selectors = [
       "h1",
       "[itemprop='headline']",
@@ -99,22 +249,30 @@ export class SmartClipAdapter extends BaseAdapter {
     return document.title || "未命名"
   }
 
-  private extractAuthor(): string {
+  private extractAuthor(jsonLd: JsonLdMetadata = {}): string {
+    const metaAuthor = this.getMetaContent([
+      "meta[name='author']",
+      "meta[property='article:author']"
+    ])
+    if (metaAuthor) {
+      return metaAuthor
+    }
+
+    if (jsonLd.author) {
+      return jsonLd.author
+    }
+
     const selectors = [
       "[itemprop='author']",
       "[rel='author']",
       ".author",
       ".byline",
-      "[class*='author']",
-      "meta[name='author']"
+      "[class*='author']"
     ]
     
     for (const selector of selectors) {
       const el = document.querySelector(selector)
       if (el) {
-        if (selector === "meta[name='author']") {
-          return el.getAttribute("content") || ""
-        }
         const text = el.textContent?.trim()
         if (text) return text.replace(/^by\s+/i, "")
       }
@@ -122,11 +280,21 @@ export class SmartClipAdapter extends BaseAdapter {
     return ""
   }
 
-  private extractDescription(): string {
-    const selectors = [
-      "meta[name='description']",
+  private extractDescription(jsonLd: JsonLdMetadata = {}): string {
+    const metaDescription = this.getMetaContent([
       "meta[property='og:description']",
       "meta[name='twitter:description']",
+      "meta[name='description']"
+    ])
+    if (metaDescription) {
+      return metaDescription
+    }
+
+    if (jsonLd.description) {
+      return jsonLd.description
+    }
+
+    const selectors = [
       "[itemprop='description']",
       ".description",
       ".excerpt",
@@ -136,9 +304,6 @@ export class SmartClipAdapter extends BaseAdapter {
     for (const selector of selectors) {
       const el = document.querySelector(selector)
       if (el) {
-        if (selector.startsWith("meta")) {
-          return el.getAttribute("content") || ""
-        }
         const text = el.textContent?.trim()
         if (text) return text.slice(0, 500)
       }
@@ -146,10 +311,20 @@ export class SmartClipAdapter extends BaseAdapter {
     return ""
   }
 
-  private extractCoverImage(): string {
-    const selectors = [
+  private extractCoverImage(jsonLd: JsonLdMetadata = {}): string {
+    const metaImage = this.getMetaContent([
       "meta[property='og:image']",
-      "meta[name='twitter:image']",
+      "meta[name='twitter:image']"
+    ])
+    if (metaImage) {
+      return this.toAbsoluteUrl(metaImage)
+    }
+
+    if (jsonLd.image) {
+      return this.toAbsoluteUrl(jsonLd.image)
+    }
+
+    const selectors = [
       "[itemprop='image']",
       "article img",
       ".featured-image img",
@@ -159,22 +334,30 @@ export class SmartClipAdapter extends BaseAdapter {
     for (const selector of selectors) {
       const el = document.querySelector(selector)
       if (el) {
-        if (selector.startsWith("meta")) {
-          const content = el.getAttribute("content")
-          if (content) return content
-        }
         const src = el.getAttribute("src") || el.getAttribute("data-src")
-        if (src) return src
+        if (src) return this.toAbsoluteUrl(src)
       }
     }
     return ""
   }
 
-  private extractPublishDate(): string {
+  private extractPublishDate(jsonLd: JsonLdMetadata = {}): string {
+    const metaDate = this.getMetaContent([
+      "meta[property='article:published_time']",
+      "meta[name='article:published_time']"
+    ])
+    if (metaDate) {
+      return metaDate
+    }
+
+    if (jsonLd.publishDate) {
+      return jsonLd.publishDate
+    }
+
     const selectors = [
       "time[datetime]",
       "[itemprop='datePublished']",
-      "meta[property='article:published_time']",
+      "article time",
       ".publish-date",
       ".post-date",
       ".date"
@@ -183,9 +366,6 @@ export class SmartClipAdapter extends BaseAdapter {
     for (const selector of selectors) {
       const el = document.querySelector(selector)
       if (el) {
-        if (selector === "meta[property='article:published_time']") {
-          return el.getAttribute("content") || ""
-        }
         if (el.hasAttribute("datetime")) {
           return el.getAttribute("datetime") || ""
         }
@@ -196,11 +376,16 @@ export class SmartClipAdapter extends BaseAdapter {
     return new Date().toISOString()
   }
 
-  private extractSiteName(): string {
-    const ogSiteName = document.querySelector("meta[property='og:site_name']")
-    if (ogSiteName) {
-      return ogSiteName.getAttribute("content") || ""
+  private extractSiteName(jsonLd: JsonLdMetadata = {}): string {
+    const metaSiteName = this.getMetaContent(["meta[property='og:site_name']"])
+    if (metaSiteName) {
+      return metaSiteName
     }
+
+    if (jsonLd.siteName) {
+      return jsonLd.siteName
+    }
+
     return window.location.hostname.replace("www.", "")
   }
 
@@ -229,109 +414,401 @@ export class SmartClipAdapter extends BaseAdapter {
   }
 
   private extractMainContent(): string {
-    const selectors = [
-      "article",
-      "[role='article']",
-      ".post-content",
-      ".article-content",
-      ".entry-content",
-      ".article-body",
-      ".article__content",
-      "main",
-      "#content",
-      ".main-content"
+    const bestRoot = this.findBestContentRoot()
+    const contentRoot = bestRoot || document.body
+
+    if (!contentRoot) {
+      return ""
+    }
+
+    const structuredContent = this.extractStructuredContent(contentRoot)
+    if (structuredContent.length >= 200) {
+      return structuredContent.slice(0, MAX_CONTENT_LENGTH)
+    }
+
+    return this.cleanContent(contentRoot).slice(0, MAX_CONTENT_LENGTH)
+  }
+
+  private findBestContentRoot(): Element | null {
+    const candidateSelectors = [
+      { selector: "article", priority: 120 },
+      { selector: "main", priority: 100 },
+      { selector: "[role='main']", priority: 90 },
+      {
+        selector:
+          ".post-content, .article-content, .entry-content, .article-body, .article__content, #content, .main-content",
+        priority: 75
+      }
     ]
 
-    let bestContent = ""
-    let maxLength = 0
-    let bestElement: Element | null = null
+    const candidates: CandidateScore[] = []
+    const seen = new Set<Element>()
 
-    for (const selector of selectors) {
-      const el = document.querySelector(selector)
-      if (el) {
-        const text = this.cleanContent(el)
-        if (text.length > maxLength) {
-          maxLength = text.length
-          bestContent = text
-          bestElement = el
+    candidateSelectors.forEach(({ selector, priority }) => {
+      document.querySelectorAll(selector).forEach((element) => {
+        if (seen.has(element)) {
+          return
         }
+
+        const score = this.scoreContentCandidate(element, priority)
+        if (score > 0) {
+          candidates.push({ element, score })
+          seen.add(element)
+        }
+      })
+    })
+
+    this.collectHeuristicCandidates(seen).forEach((candidate) => {
+      candidates.push(candidate)
+    })
+
+    candidates.sort((first, second) => second.score - first.score)
+    return candidates[0]?.element || null
+  }
+
+  private collectHeuristicCandidates(seen: Set<Element>): CandidateScore[] {
+    const heuristicCandidates: CandidateScore[] = []
+    const elements = Array.from(
+      document.querySelectorAll("section, div, article, main")
+    )
+
+    elements.forEach((element) => {
+      if (seen.has(element)) {
+        return
       }
+
+      const score = this.scoreContentCandidate(element, 0)
+      if (score > 120) {
+        heuristicCandidates.push({ element, score })
+      }
+    })
+
+    return heuristicCandidates
+  }
+
+  private scoreContentCandidate(element: Element, priorityBoost: number): number {
+    if (this.isLikelyNoiseElement(element)) {
+      return 0
     }
 
-    if (!bestContent && document.body) {
-      bestContent = this.cleanContent(document.body)
+    const text = this.normalizeTextContent(element.textContent || "")
+    if (text.length < 120) {
+      return 0
     }
 
-    return bestContent.slice(0, 100000)
+    const htmlLength = element.innerHTML.length || 1
+    const density = text.length / htmlLength
+    const paragraphCount = element.querySelectorAll("p").length
+    const headingCount = element.querySelectorAll("h1, h2, h3, h4, h5, h6").length
+    const articleNodes = element.querySelectorAll("article").length
+    const mediaCount = element.querySelectorAll("img, figure, video").length
+    const linkTextLength = Array.from(element.querySelectorAll("a")).reduce(
+      (total, anchor) => total + this.normalizeTextContent(anchor.textContent || "").length,
+      0
+    )
+    const linkPenaltyRatio = text.length > 0 ? linkTextLength / text.length : 0
+
+    let score = priorityBoost
+    score += text.length * 0.12
+    score += density * 120
+    score += paragraphCount * 18
+    score += headingCount * 14
+    score += mediaCount * 4
+    score += articleNodes * 10
+    score -= Math.max(0, linkPenaltyRatio - 0.45) * 180
+
+    if (this.containsNoisePattern(text)) {
+      score -= 120
+    }
+
+    return score
   }
 
   private cleanContent(element: Element): string {
     const clone = element.cloneNode(true) as Element
-    
-    const removeSelectors = [
-      "script",
-      "style",
-      "nav",
-      "header",
-      "footer",
-      "aside",
-      ".sidebar",
-      ".advertisement",
-      ".ad",
-      ".ads",
-      ".comments",
-      ".comment",
-      ".social-share",
-      ".share",
-      ".related-posts",
-      ".popup",
-      ".modal",
-      ".dialog",
-      "[role='navigation']",
-      "[role='banner']",
-      "[role='complementary']",
-      "[role='feed']",
-      ".toc",
-      ".table-of-contents",
-      ".author-card",
-      ".author-bio",
-      ".subscription",
-      ".newsletter",
-      // 点赞图标、反应图标
-      ".reaction",
-      "[class*='reaction']",
-      ".like-button",
-      "[class*='like-btn']",
-      ".vote",
-      ".emotion",
-      "[class*='emoji']",
-      "[class*='icon-reward']",
-      "[data-type='like']",
-      "[data-type='reward']",
-      // 悬浮按钮
-      ".fixed-bar",
-      ".float-bar",
-      "[class*='fixed-']",
-      "[class*='float-']",
-      // 评论区
-      "#comments",
-      ".comments-area",
-      "[id*='comment']",
-      "[class*='comment-area']",
-      // 右侧推荐
-      ".recommended",
-      "[class*='recommend']",
-      ".related",
-      ".relevant"
-    ]
-    
-    removeSelectors.forEach(selector => {
+
+    NOISE_SELECTORS.forEach(selector => {
       try {
         clone.querySelectorAll(selector).forEach(el => el.remove())
       } catch (e) {}
     })
 
+    this.pruneNoiseSubtrees(clone)
+
     return this.processElementToMarkdown(clone)
+  }
+
+  private normalizeTextContent(text: string): string {
+    return text.replace(/\s+/g, " ").trim()
+  }
+
+  private containsNoisePattern(text: string): boolean {
+    return NOISE_TEXT_PATTERNS.some((pattern) => pattern.test(text))
+  }
+
+  private isLikelyNoiseElement(element: Element): boolean {
+    if (
+      element.matches(NOISE_SELECTORS.join(", ")) ||
+      element.getAttribute("aria-hidden") === "true"
+    ) {
+      return true
+    }
+
+    const className = (element.getAttribute("class") || "").toLowerCase()
+    const id = (element.getAttribute("id") || "").toLowerCase()
+    const marker = `${className} ${id}`
+    const role = (element.getAttribute("role") || "").toLowerCase()
+    const text = this.normalizeTextContent(element.textContent || "")
+    const anchors = Array.from(element.querySelectorAll("a"))
+    const javascriptLinks = anchors.filter((anchor) => {
+      const href = (anchor.getAttribute("href") || "").trim().toLowerCase()
+      return href.startsWith("javascript:")
+    }).length
+
+    if (role === "dialog" || role === "alertdialog") {
+      return true
+    }
+
+    if (
+      javascriptLinks >= 2 &&
+      text.length < 240 &&
+      this.containsNoisePattern(text) &&
+      element.querySelectorAll("p").length <= 1 &&
+      element.querySelectorAll("h1, h2, h3, h4, h5, h6").length <= 1
+    ) {
+      return true
+    }
+
+    if (
+      text.length < 180 &&
+      this.containsNoisePattern(text) &&
+      element.querySelectorAll("button").length + anchors.length >= 2
+    ) {
+      return true
+    }
+
+    return [
+      "comment",
+      "recommend",
+      "related",
+      "share",
+      "footer",
+      "sidebar",
+      "pager",
+      "nav",
+      "subscribe",
+      "author-card",
+      "overlay",
+      "modal",
+      "dialog",
+      "popup",
+      "mask"
+    ].some((keyword) => marker.includes(keyword))
+  }
+
+  private pruneNoiseSubtrees(root: Element): void {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
+    const nodes: Element[] = []
+
+    while (walker.nextNode()) {
+      nodes.push(walker.currentNode as Element)
+    }
+
+    nodes.forEach((node) => {
+      if (!node.parentElement) {
+        return
+      }
+
+      if (this.isLikelyNoiseElement(node)) {
+        node.remove()
+        return
+      }
+
+      const text = this.normalizeTextContent(node.textContent || "")
+      if (!text) {
+        return
+      }
+
+      const anchors = Array.from(node.querySelectorAll("a"))
+      const javascriptLinkCount = anchors.filter((anchor) => {
+        const href = (anchor.getAttribute("href") || "").trim().toLowerCase()
+        return href.startsWith("javascript:") || href.startsWith("void(")
+      }).length
+
+      const childCount = node.children.length
+      const paragraphCount = node.querySelectorAll("p").length
+      const headingCount = node.querySelectorAll("h1, h2, h3, h4, h5, h6").length
+
+      if (
+        javascriptLinkCount >= 2 &&
+        text.length < 300 &&
+        this.containsNoisePattern(text) &&
+        paragraphCount <= 1 &&
+        headingCount <= 1
+      ) {
+        node.remove()
+        return
+      }
+
+      if (
+        this.containsNoisePattern(text) &&
+        text.length < 500 &&
+        paragraphCount <= 1 &&
+        headingCount <= 1 &&
+        childCount <= 12
+      ) {
+        node.remove()
+      }
+    })
+  }
+
+  private extractStructuredContent(root: Element): string {
+    const headings = Array.from(root.querySelectorAll("h1, h2, h3, h4, h5, h6"))
+    if (headings.length === 0) {
+      return ""
+    }
+
+    const lines: string[] = []
+
+    headings.forEach((heading) => {
+      const level = Math.min(Number.parseInt(heading.tagName.slice(1), 10), 4)
+      const title = this.normalizeTextContent(heading.textContent || "")
+
+      if (!title || this.containsNoisePattern(title)) {
+        return
+      }
+
+      lines.push(`${"#".repeat(level)} ${title}`)
+
+      const sectionParts: string[] = []
+      let sibling = heading.nextElementSibling
+
+      while (sibling && !/^H[1-6]$/.test(sibling.tagName)) {
+        const text = this.cleanContent(sibling)
+        if (text && !this.containsNoisePattern(text)) {
+          sectionParts.push(text)
+        }
+        sibling = sibling.nextElementSibling
+      }
+
+      if (sectionParts.length > 0) {
+        lines.push(sectionParts.join("\n\n"))
+      }
+    })
+
+    return lines.join("\n\n").trim()
+  }
+
+  private extractJsonLdMetadata(): JsonLdMetadata {
+    const result: JsonLdMetadata = {}
+    const scripts = Array.from(
+      document.querySelectorAll("script[type='application/ld+json']")
+    )
+
+    const collect = (value: unknown) => {
+      if (!value || typeof value !== "object") {
+        return
+      }
+
+      if (Array.isArray(value)) {
+        value.forEach(collect)
+        return
+      }
+
+      const record = value as Record<string, unknown>
+
+      if (Array.isArray(record["@graph"])) {
+        record["@graph"].forEach(collect)
+      }
+
+      const type = String(record["@type"] || "").toLowerCase()
+      const isContentLike =
+        type.includes("article") ||
+        type.includes("newsarticle") ||
+        type.includes("blogposting") ||
+        type.includes("webpage")
+
+      if (isContentLike || !type) {
+        const title = typeof record.headline === "string"
+          ? record.headline
+          : typeof record.name === "string"
+            ? record.name
+            : ""
+        const description =
+          typeof record.description === "string" ? record.description : ""
+        const publishDate =
+          typeof record.datePublished === "string" ? record.datePublished : ""
+        const siteName =
+          typeof record.publisher === "object" &&
+          record.publisher &&
+          typeof (record.publisher as Record<string, unknown>).name === "string"
+            ? String((record.publisher as Record<string, unknown>).name)
+            : ""
+
+        const image = this.extractJsonLdImage(record.image)
+        const author = this.extractJsonLdAuthor(record.author)
+
+        if (title && !result.title) result.title = title
+        if (description && !result.description) result.description = description
+        if (publishDate && !result.publishDate) result.publishDate = publishDate
+        if (siteName && !result.siteName) result.siteName = siteName
+        if (image && !result.image) result.image = image
+        if (author && !result.author) result.author = author
+      }
+    }
+
+    scripts.forEach((script) => {
+      const rawText = script.textContent?.trim()
+      if (!rawText) {
+        return
+      }
+
+      try {
+        collect(JSON.parse(rawText))
+      } catch (error) {
+        console.warn("⚠️ JSON-LD 解析失败:", error)
+      }
+    })
+
+    return result
+  }
+
+  private extractJsonLdImage(imageValue: unknown): string {
+    if (typeof imageValue === "string") {
+      return imageValue
+    }
+
+    if (Array.isArray(imageValue)) {
+      const firstImage = imageValue.find((item) => typeof item === "string")
+      return typeof firstImage === "string" ? firstImage : ""
+    }
+
+    if (imageValue && typeof imageValue === "object") {
+      const url = (imageValue as Record<string, unknown>).url
+      return typeof url === "string" ? url : ""
+    }
+
+    return ""
+  }
+
+  private extractJsonLdAuthor(authorValue: unknown): string {
+    if (typeof authorValue === "string") {
+      return authorValue
+    }
+
+    if (Array.isArray(authorValue)) {
+      const names = authorValue
+        .map((author) => this.extractJsonLdAuthor(author))
+        .filter(Boolean)
+      return names.join(", ")
+    }
+
+    if (authorValue && typeof authorValue === "object") {
+      const author = authorValue as Record<string, unknown>
+      return typeof author.name === "string" ? author.name : ""
+    }
+
+    return ""
   }
 
   private processElementToMarkdown(element: Element): string {
@@ -340,7 +817,7 @@ export class SmartClipAdapter extends BaseAdapter {
     const traverse = (node: Node, inList = false, listType: string = "") => {
       if (node.nodeType === Node.TEXT_NODE) {
         const text = node.textContent?.replace(/\s+/g, " ").trim()
-        if (text) {
+        if (text && !this.shouldIgnoreTextNode(text)) {
           if (inList) {
             lines.push(text)
           } else {
@@ -403,19 +880,26 @@ export class SmartClipAdapter extends BaseAdapter {
           case "a":
             const href = el.getAttribute("href")
             const linkText = el.textContent?.trim() || ""
-            if (href && linkText) {
+            if (href?.toLowerCase().startsWith("javascript:")) {
+              break
+            }
+            if (href && linkText && !this.shouldIgnoreTextNode(linkText)) {
               lines.push(`[${linkText}](${href})`)
-            } else if (linkText) {
+            } else if (linkText && !this.shouldIgnoreTextNode(linkText)) {
               lines.push(linkText)
             }
             break
           case "strong":
           case "b":
-            lines.push(`**${el.textContent?.trim() || ""}**`)
+            if (el.textContent?.trim() && !this.shouldIgnoreTextNode(el.textContent.trim())) {
+              lines.push(`**${el.textContent.trim()}**`)
+            }
             break
           case "em":
           case "i":
-            lines.push(`*${el.textContent?.trim() || ""}*`)
+            if (el.textContent?.trim() && !this.shouldIgnoreTextNode(el.textContent.trim())) {
+              lines.push(`*${el.textContent.trim()}*`)
+            }
             break
           case "code":
             if (el.parentElement?.tagName.toLowerCase() === "pre") {
@@ -498,6 +982,18 @@ export class SmartClipAdapter extends BaseAdapter {
     let result = lines.join("\n")
     result = result.replace(/\n{3,}/g, "\n\n")
     return result.trim()
+  }
+
+  private shouldIgnoreTextNode(text: string): boolean {
+    if (!text) {
+      return true
+    }
+
+    if (/^[*x×#|>_\-]+$/i.test(text)) {
+      return true
+    }
+
+    return this.containsNoisePattern(text)
   }
 
   getMetadata(): WebPageMetadata {

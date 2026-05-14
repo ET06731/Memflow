@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react"
-import iconUrl from "url:../assets/icon.png"
+import iconUrl from "url:../assets/icon.svg"
 import packageJson from "../package.json"
 
-import { getDefaultObsidianConfig } from "./config/defaults"
-import type { AIApiConfig, MemflowHelperConfig, ObsidianConfig } from "./types/index"
+import { getDefaultObsidianConfig, getDefaultFloatingBallConfig } from "./config/defaults"
+import type { AIApiConfig, FloatingBallConfig, MemflowHelperConfig, ObsidianConfig } from "./types/index"
 import { AIService } from "./services/ai-api"
 import { MemflowHelperService } from "./services/memflow-helper"
 import {
@@ -213,8 +213,8 @@ function Options() {
     }
   })
 
-  const [activeTab, setActiveTab] = useState<
-    "general" | "template" | "ai" | "about"
+const [activeTab, setActiveTab] = useState<
+    "general" | "template" | "ai" | "floating" | "about"
   >("general")
   const [saved, setSaved] = useState(false)
   const [localModels, setLocalModels] = useState<string[]>([])
@@ -232,6 +232,9 @@ function Options() {
   const [helperStatus, setHelperStatus] = useState<"idle" | "testing" | "success" | "error">("idle")
   const [helperMessage, setHelperMessage] = useState("")
   const [folderHistory, setFolderHistory] = useState<string[]>([])
+  const [floatingBallConfig, setFloatingBallConfig] = useState<FloatingBallConfig>(
+    getDefaultFloatingBallConfig()
+  )
 
   const providers = [
     { id: "openai", name: "OpenAI", defaultModel: "gpt-3.5-turbo" },
@@ -252,12 +255,13 @@ function Options() {
   }
 
   useEffect(() => {
-    chrome.storage.sync.get(
+chrome.storage.sync.get(
       [
         "obsidianConfig",
         "aiApiConfig",
         "templateConfig",
         "memflowHelperConfig",
+        "floatingBallConfig",
         DEFAULT_FOLDER_HISTORY_KEY
       ],
       (data) => {
@@ -288,6 +292,12 @@ function Options() {
           setFolderHistory(
             buildFolderHistory("", data[DEFAULT_FOLDER_HISTORY_KEY])
           )
+        }
+        if (data.floatingBallConfig) {
+          setFloatingBallConfig({
+            ...getDefaultFloatingBallConfig(),
+            ...data.floatingBallConfig
+          })
         }
       }
     )
@@ -340,11 +350,12 @@ function Options() {
       folderHistory
     )
 
-    chrome.storage.sync.set(
+chrome.storage.sync.set(
       {
         obsidianConfig: normalizedConfig,
         aiApiConfig: aiConfig,
         memflowHelperConfig: helperConfig,
+        floatingBallConfig: floatingBallConfig,
         templateConfig: templateConfig,
         [DEFAULT_FOLDER_HISTORY_KEY]: nextFolderHistory
       },
@@ -776,6 +787,12 @@ function Options() {
             onClick={() => setActiveTab("ai")}>
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="14" x="3" y="8" rx="2"/><path d="M12 5a3 3 0 1 0-3 3"/><path d="M9 8v2"/><path d="M15 8v2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
             {t.aiApiConfig}
+          </div>
+          <div
+            className={`tab ${activeTab === "floating" ? "active" : ""}`}
+            onClick={() => setActiveTab("floating")}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+            {lang === "zh" ? "悬浮球" : "Floating Ball"}
           </div>
           <div
             className={`tab ${activeTab === "about" ? "active" : ""}`}
@@ -1347,13 +1364,26 @@ function Options() {
                         paddingTop: 20,
                         borderTop: "1px solid rgba(245, 158, 11, 0.15)"
                       }}>
-                      <h3
+<h3
                         style={{
                           margin: "0 0 14px 0",
                           fontSize: 18,
-                          color: "#f3efe5"
+                          color: "#f3efe5",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px"
                         }}>
                         {lang === "zh" ? "Memflow Helper 本地转写" : "Memflow Helper Local Transcription"}
+                        <span style={{
+                          fontSize: 11,
+                          color: "#f59e0b",
+                          background: "rgba(245, 158, 11, 0.15)",
+                          padding: "2px 8px",
+                          borderRadius: 10,
+                          fontWeight: 600
+                        }}>
+                          {lang === "zh" ? "测试中" : "Beta"}
+                        </span>
                       </h3>
                       <div className="form-group">
                         <label className="checkbox-label">
@@ -1511,6 +1541,226 @@ function Options() {
                     </div>
                   </>
                 )}
+</>
+            )}
+
+            {activeTab === "floating" && (
+              <>
+                <h2 className="section-title">
+                  {lang === "zh" ? "悬浮球设置" : "Floating Ball Settings"}
+                </h2>
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      className="checkbox-input"
+                      checked={floatingBallConfig.enableFloatingBall}
+                      onChange={(e) =>
+                        setFloatingBallConfig({
+                          ...floatingBallConfig,
+                          enableFloatingBall: e.target.checked
+                        })
+                      }
+                    />
+                    <div className="checkbox-text">
+                      <span className="checkbox-title">
+                        {lang === "zh" ? "启用悬浮球" : "Enable Floating Ball"}
+                      </span>
+                      <span className="checkbox-desc">
+                        {lang === "zh"
+                          ? "在页面右侧显示 Memflow 悬浮球，点击即可一键导出"
+                          : "Show a floating ball on the right side of pages for one-click export"}
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    {lang === "zh" ? "单击行为" : "Click Action"}
+                  </label>
+                  <div className="method-selector">
+                    <div className="method-option">
+                      <input
+                        type="radio"
+                        id="fb-direct"
+                        name="floatingBallClickAction"
+                        className="method-radio"
+                        checked={floatingBallConfig.floatingBallClickAction === "direct"}
+                        onChange={() =>
+                          setFloatingBallConfig({
+                            ...floatingBallConfig,
+                            floatingBallClickAction: "direct"
+                          })
+                        }
+                      />
+                      <label htmlFor="fb-direct" className="method-label">
+                        <b>{lang === "zh" ? "直接导出" : "Direct Export"}</b>
+                        <br />
+                        <small>{lang === "zh" ? "单击直接执行导出" : "Click to export directly"}</small>
+                      </label>
+                    </div>
+                    <div className="method-option">
+                      <input
+                        type="radio"
+                        id="fb-smart"
+                        name="floatingBallClickAction"
+                        className="method-radio"
+                        checked={floatingBallConfig.floatingBallClickAction === "smart"}
+                        onChange={() =>
+                          setFloatingBallConfig({
+                            ...floatingBallConfig,
+                            floatingBallClickAction: "smart"
+                          })
+                        }
+                      />
+                      <label htmlFor="fb-smart" className="method-label">
+                        <b>{lang === "zh" ? "智能导出" : "Smart Export"}</b>
+                        <br />
+                        <small>{lang === "zh" ? "单击触发 AI 智能分析后导出" : "Click to analyze with AI then export"}</small>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      className="checkbox-input"
+                      checked={floatingBallConfig.hideFloatingBallUntilHover}
+                      onChange={(e) =>
+                        setFloatingBallConfig({
+                          ...floatingBallConfig,
+                          hideFloatingBallUntilHover: e.target.checked
+                        })
+                      }
+                    />
+                    <div className="checkbox-text">
+                      <span className="checkbox-title">
+                        {lang === "zh" ? "未悬停时隐藏" : "Hide Until Hover"}
+                      </span>
+                      <span className="checkbox-desc">
+                        {lang === "zh"
+                          ? "鼠标不靠近页面右侧时自动隐藏悬浮球"
+                          : "Auto-hide the floating ball until mouse approaches the right edge"}
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    {lang === "zh" ? "禁用网页" : "Disabled Sites"}
+                  </label>
+                  <span className="input-hint" style={{ marginBottom: 8, display: "block" }}>
+                    {lang === "zh"
+                      ? "在这些网页上不显示悬浮球。支持通配符 *，例如：*.example.com/*"
+                      : "Hide the floating ball on these sites. Supports wildcard *, e.g.: *.example.com/*"}
+                  </span>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                    <input
+                      type="text"
+                      id="new-disabled-site"
+                      className="form-input"
+                      placeholder={lang === "zh" ? "输入网址或通配符..." : "Enter URL or wildcard..."}
+                      style={{ flex: 1 }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const input = e.target as HTMLInputElement
+                          const val = input.value.trim()
+                          if (val && !floatingBallConfig.floatingBallDisabledSites.includes(val)) {
+                            setFloatingBallConfig({
+                              ...floatingBallConfig,
+                              floatingBallDisabledSites: [
+                                ...floatingBallConfig.floatingBallDisabledSites,
+                                val
+                              ]
+                            })
+                            input.value = ""
+                          }
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = document.getElementById("new-disabled-site") as HTMLInputElement
+                        const val = input.value.trim()
+                        if (val && !floatingBallConfig.floatingBallDisabledSites.includes(val)) {
+                          setFloatingBallConfig({
+                            ...floatingBallConfig,
+                            floatingBallDisabledSites: [
+                              ...floatingBallConfig.floatingBallDisabledSites,
+                              val
+                            ]
+                          })
+                          input.value = ""
+                        }
+                      }}
+                      style={{
+                        padding: "8px 16px",
+                        background: "#f59e0b",
+                        border: "none",
+                        borderRadius: 6,
+                        color: "#000",
+                        fontWeight: 600,
+                        fontSize: 13,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap"
+                      }}>
+                      + {lang === "zh" ? "添加" : "Add"}
+                    </button>
+                  </div>
+                  {floatingBallConfig.floatingBallDisabledSites.length > 0 && (
+                    <div style={{
+                      background: "rgba(0,0,0,0.2)",
+                      borderRadius: 8,
+                      padding: 8
+                    }}>
+                      {floatingBallConfig.floatingBallDisabledSites.map((site, i) => (
+                        <div
+                          key={`${site}-${i}`}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "6px 8px",
+                            borderRadius: 4,
+                            marginBottom: 4,
+                            background: "rgba(255,255,255,0.03)"
+                          }}>
+                          <span style={{
+                            fontSize: 13,
+                            color: "#ccc",
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: 12
+                          }}>{site}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFloatingBallConfig({
+                                ...floatingBallConfig,
+                                floatingBallDisabledSites:
+                                  floatingBallConfig.floatingBallDisabledSites.filter((_, idx) => idx !== i)
+                              })
+                            }}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#ef4444",
+                              cursor: "pointer",
+                              fontSize: 14,
+                              padding: "2px 6px",
+                              borderRadius: 4
+                            }}>
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
 

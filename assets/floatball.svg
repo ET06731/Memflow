@@ -1,0 +1,17 @@
+<svg width="1024" height="1024" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 圆形背景 -->
+  <circle cx="64" cy="64" r="62" fill="#E9DEFF"></circle>
+  <circle cx="64" cy="64" r="61" stroke="#D4C0FF" stroke-width="2"></circle>
+
+  <!-- 爪印：扁平化纯色 -->
+  <g fill="#7D59C8">
+    <!-- 中间大肉垫 -->
+    <path d="M65.1 57.3C51.1 57.3 36.2 70.6 35.1 88.5C34.4 101.9 44.3 108.1 64.3 108.1C84.3 108.1 94.5 101.7 93.2 88.5C91.7 71 79.3 57.3 65.1 57.3Z"></path>
+
+    <!-- 四个小肉垫 -->
+    <ellipse cx="47.8" cy="36.3" rx="12.3" ry="14.1" transform="rotate(-12 47.8 36.3)"></ellipse>
+    <ellipse cx="80.3" cy="36.4" rx="12.4" ry="14.1" transform="rotate(13 80.3 36.4)"></ellipse>
+    <ellipse cx="25.1" cy="57.6" rx="10.5" ry="12.2" transform="rotate(-43 25.1 57.6)"></ellipse>
+    <ellipse cx="102.8" cy="57.6" rx="10.5" ry="12.2" transform="rotate(43 102.8 57.6)"></ellipse>
+  </g>
+</svg>

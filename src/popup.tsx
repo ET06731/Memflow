@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react"
 
-import { getDefaultObsidianConfig } from "./config/defaults"
-import type { AIApiConfig, ObsidianConfig } from "./types/index"
+import { getDefaultObsidianConfig, getDefaultFloatingBallConfig } from "./config/defaults"
+import type { AIApiConfig, FloatingBallConfig, ObsidianConfig } from "./types/index"
 import {
   buildFolderHistory,
   DEFAULT_FOLDER_HISTORY_KEY,
@@ -107,23 +107,30 @@ function Popup() {
   const [saved, setSaved] = useState(false)
   const [showTemplateSettings, setShowTemplateSettings] = useState(false)
   const [showFolderDropdown, setShowFolderDropdown] = useState(false)
+  const [showClickActionDropdown, setShowClickActionDropdown] = useState(false)
   const [folderHistory, setFolderHistory] = useState<string[]>([])
+  const [floatingBallConfig, setFloatingBallConfig] = useState<FloatingBallConfig>(
+    getDefaultFloatingBallConfig()
+  )
   const folderDropdownRef = useRef<HTMLDivElement>(null)
+  const clickActionRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!showFolderDropdown) return
     const handleClickOutside = (e: MouseEvent) => {
       if (folderDropdownRef.current && !folderDropdownRef.current.contains(e.target as Node)) {
         setShowFolderDropdown(false)
       }
+      if (clickActionRef.current && !clickActionRef.current.contains(e.target as Node)) {
+        setShowClickActionDropdown(false)
+      }
     }
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [showFolderDropdown])
+  }, [])
 
   useEffect(() => {
-    chrome.storage.sync.get(
-      ["obsidianConfig", "templateConfig", DEFAULT_FOLDER_HISTORY_KEY],
+chrome.storage.sync.get(
+      ["obsidianConfig", "templateConfig", DEFAULT_FOLDER_HISTORY_KEY, "floatingBallConfig"],
       (data) => {
         if (data.obsidianConfig) {
           setConfig({
@@ -141,6 +148,12 @@ function Popup() {
           setFolderHistory(
             buildFolderHistory("", data[DEFAULT_FOLDER_HISTORY_KEY])
           )
+        }
+        if (data.floatingBallConfig) {
+          setFloatingBallConfig({
+            ...getDefaultFloatingBallConfig(),
+            ...data.floatingBallConfig
+          })
         }
       }
     )
@@ -1188,6 +1201,131 @@ function Popup() {
                 )}
               </button>
             </div>
+
+            <div style={{
+              padding: "14px",
+              background: "rgba(255, 255, 255, 0.03)",
+              borderRadius: "14px",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
+              marginBottom: "12px"
+            }}>
+              <div style={{
+                fontSize: "12px",
+                color: "#f59e0b",
+                fontWeight: 600,
+                marginBottom: "10px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px"
+              }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+                悬浮球控制
+              </div>
+              <div className="checkbox-row" style={{ marginBottom: "8px" }}>
+                <input
+                  type="checkbox"
+                  id="popup-enable-ball"
+                  checked={floatingBallConfig.enableFloatingBall}
+                  onChange={(e) => {
+                    const newConfig = {
+                      ...floatingBallConfig,
+                      enableFloatingBall: e.target.checked
+                    }
+                    setFloatingBallConfig(newConfig)
+                    chrome.storage.sync.set({ floatingBallConfig: newConfig })
+                  }}
+                  style={{ accentColor: "#f59e0b", width: "16px", height: "16px", cursor: "pointer" }}
+                />
+                <label htmlFor="popup-enable-ball" style={{ fontSize: "12px", color: "#aaa", cursor: "pointer" }}>
+                  启用悬浮球
+                </label>
+              </div>
+              <div ref={clickActionRef} style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", position: "relative" }}>
+                <label style={{ fontSize: "11px", color: "#666", whiteSpace: "nowrap" }}>点击行为:</label>
+                <div
+                  onClick={() => setShowClickActionDropdown(!showClickActionDropdown)}
+                  style={{
+                    flex: 1,
+                    padding: "6px 36px 6px 8px",
+                    background: "rgba(0,0,0,0.2)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "6px",
+                    color: "#eee",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    position: "relative",
+                    userSelect: "none"
+                  }}>
+                  {floatingBallConfig.floatingBallClickAction === "direct" ? "直接导出" : "智能导出"}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
+                {showClickActionDropdown && (
+                  <div style={{
+                    position: "absolute",
+                    top: "calc(100% + 4px)",
+                    left: "78px",
+                    right: "0",
+                    zIndex: 100,
+                    background: "#1a1a1a",
+                    border: "1px solid rgba(245, 158, 11, 0.3)",
+                    borderRadius: "8px",
+                    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.5)",
+                    overflow: "hidden"
+                  }}>
+                    <div
+                      onClick={() => {
+                        const newConfig = { ...floatingBallConfig, floatingBallClickAction: "direct" as const }
+                        setFloatingBallConfig(newConfig)
+                        chrome.storage.sync.set({ floatingBallConfig: newConfig })
+                        setShowClickActionDropdown(false)
+                      }}
+                      style={{
+                        padding: "8px 12px",
+                        fontSize: "12px",
+                        cursor: "pointer",
+                        transition: "background 0.15s",
+                        color: floatingBallConfig.floatingBallClickAction === "direct" ? "#f59e0b" : "#eee",
+                        background: floatingBallConfig.floatingBallClickAction === "direct" ? "rgba(245, 158, 11, 0.2)" : "transparent"
+                      }}
+                      onMouseEnter={(e) => { if (floatingBallConfig.floatingBallClickAction !== "direct") e.currentTarget.style.background = "rgba(245, 158, 11, 0.15)" }}
+                      onMouseLeave={(e) => { if (floatingBallConfig.floatingBallClickAction !== "direct") e.currentTarget.style.background = "transparent" }}>
+                      直接导出
+                    </div>
+                    <div
+                      onClick={() => {
+                        const newConfig = { ...floatingBallConfig, floatingBallClickAction: "smart" as const }
+                        setFloatingBallConfig(newConfig)
+                        chrome.storage.sync.set({ floatingBallConfig: newConfig })
+                        setShowClickActionDropdown(false)
+                      }}
+                      style={{
+                        padding: "8px 12px",
+                        fontSize: "12px",
+                        cursor: "pointer",
+                        transition: "background 0.15s",
+                        color: floatingBallConfig.floatingBallClickAction === "smart" ? "#f59e0b" : "#eee",
+                        background: floatingBallConfig.floatingBallClickAction === "smart" ? "rgba(245, 158, 11, 0.2)" : "transparent"
+                      }}
+                      onMouseEnter={(e) => { if (floatingBallConfig.floatingBallClickAction !== "smart") e.currentTarget.style.background = "rgba(245, 158, 11, 0.15)" }}
+                      onMouseLeave={(e) => { if (floatingBallConfig.floatingBallClickAction !== "smart") e.currentTarget.style.background = "transparent" }}>
+                      智能导出
+                    </div>
+                  </div>
+                )}
+              </div>
+              </div>
           </div>
         </div>
       </div>

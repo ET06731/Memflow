@@ -76,3 +76,16 @@ export interface MemflowHelperConfig {
   pollIntervalMs: number
   timeoutMs: number
 }
+
+/**
+ * 悬浮球配置
+ */
+export interface FloatingBallConfig {
+  enableFloatingBall: boolean
+  floatingBallClickAction: "direct" | "smart"
+  enableFloatingBallQuickPanel: boolean
+  hideFloatingBallUntilHover: boolean
+  floatingBallDisabledSites: string[]
+  floatingBallPosition: number // 0-100, 距顶部百分比
+  floatingBallSide: "left" | "right" // 吸附在哪一侧
+}

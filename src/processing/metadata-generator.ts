@@ -1,52 +1,54 @@
 import { AIService } from "../services/ai-api"
 import type { AIApiConfig, Conversation, Metadata } from "../types"
 import { stripHtml } from "../utils/cleaner"
-import {
-  categorizeConversation,
-  extractKeywords,
-  generateSummary,
-  generateTitle
-} from "./local-algorithms"
 
 /**
  * 元数据生成器
  */
 export class MetadataGenerator {
   /**
-   * 使用本地算法生成元数据
+   * 使用本地简化逻辑生成元数据（降级方案）
    */
   generateLocal(conversation: Conversation): Metadata {
-    // 分别处理每条消息
     const cleanedMessages = conversation.messages.map((msg) => ({
       role: msg.role,
       content: stripHtml(msg.content)
     }))
 
-    // 合并所有消息文本用于关键词和分类
     const fullText = cleanedMessages.map((msg) => msg.content).join("\n\n")
 
-    // 提取关键词（基于完整对话）
-    const keywords = extractKeywords(fullText, 5)
-
-    // 生成标题（只从用户的第一条消息提取，更干净）
     const firstUserMessage = cleanedMessages.find((m) => m.role === "user")
-    const title = firstUserMessage
-      ? generateTitle(firstUserMessage.content)
-      : cleanedMessages[0]
-        ? generateTitle(cleanedMessages[0].content)
-        : "对话记录"
+    const rawTitle = firstUserMessage
+      ? firstUserMessage.content
+      : cleanedMessages[0]?.content || ""
+    const title = rawTitle
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(/[.!?。！？\n]/)[0]
+      ?.trim()
+      ?.slice(0, 50)
+      ?.replace(/[<>:"/\\|?*]/g, " ") || "对话记录"
 
-    // 生成摘要（基于完整对话）
-    const summary = generateSummary(fullText, 3)
-
-    // 智能分类（基于完整对话）
-    const category = categorizeConversation(fullText)
+    const cleanText = fullText
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+    const sentences = cleanText
+      .replace(/([.!?。！？\n])/g, "$1|")
+      .split("|")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 10)
+    const summary =
+      sentences.length > 0
+        ? sentences.slice(0, 3).join(" ")
+        : cleanText.slice(0, 150) + (cleanText.length > 150 ? "..." : "")
 
     return {
       title,
-      keywords,
+      keywords: [],
       summary,
-      category,
+      category: "思考",
       platform: conversation.platform,
       url: conversation.url
     }

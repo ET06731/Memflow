@@ -1,4 +1,4 @@
-import type { ObsidianConfig } from "../types"
+import type { FloatingBallConfig, ObsidianConfig } from "../types"
 
 type SupportedLang = "zh" | "en"
 
@@ -13,5 +13,17 @@ export function getDefaultObsidianConfig(lang: SupportedLang): ObsidianConfig {
     saveSubtitles: true,
     saveSubtitlesWithTimestamp: false,
     enableHighlight: false
+  }
+}
+
+export function getDefaultFloatingBallConfig(): FloatingBallConfig {
+  return {
+    enableFloatingBall: true,
+    floatingBallClickAction: "direct",
+    enableFloatingBallQuickPanel: true,
+    hideFloatingBallUntilHover: false,
+    floatingBallDisabledSites: [],
+    floatingBallPosition: 50,
+    floatingBallSide: "right"
   }
 }

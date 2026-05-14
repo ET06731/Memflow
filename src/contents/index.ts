@@ -1,5 +1,6 @@
 import type { PlasmoCSConfig } from "plasmo"
 
+import { initFloatingBall } from "./floating-ball"
 import { ObsidianURIHandler } from "../obsidian/uri-handler"
 import { createMarkdownBuilder, createMetadataGenerator } from "../processing"
 import { AIService } from "../services/ai-api"
@@ -424,15 +425,11 @@ async function exportSmartClipDirect() {
 
     // 3. 构建 Markdown 内容
     const date = new Date().toISOString().split("T")[0]
-    const tags = ["SmartClip", ...localMetadata.keywords]
-      .filter((t) => t)
-      .join(", ")
-
     const yaml = `---
 created: ${date}
 source: [[网页剪藏]]
 original_url: "${window.location.href}"
-tags: [${tags}]
+tags: [SmartClip]
 category: ${localMetadata.category}
 status: 待整理
 ---`
@@ -462,16 +459,6 @@ status: 待整理
     if (metadata.coverImage) {
       content += `\n![cover](${metadata.coverImage})\n`
     }
-
-    // 本地摘要
-    content += `---\n\n`
-    content += `## 摘要\n\n`
-    content += `${localMetadata.summary}\n\n`
-
-    // 关键词
-    content += `---\n\n`
-    content += `## 关键词\n\n`
-    content += localMetadata.keywords.join(", ") + "\n\n"
 
     // 高亮内容
     const highlights =
@@ -525,8 +512,6 @@ status: 待整理
       const handler = new ObsidianURIHandler(obsidianConfig)
       const result = await handler.exportToObsidian(markdownContent, {
         title: localMetadata.title,
-        summary: localMetadata.summary,
-        keywords: localMetadata.keywords,
         category: localMetadata.category,
         platform: "SmartClip",
         url: window.location.href
@@ -554,9 +539,11 @@ async function finalizeExport(conversation: Conversation) {
   const metadataGen = createMetadataGenerator()
   const metadata = metadataGen.generateLocal(conversation)
 
+  // 直接导出不包含摘要和关键词元数据
   const { obsidianConfig } = await chrome.storage.sync.get("obsidianConfig")
   const markdownBuilder = createMarkdownBuilder()
-  const markdown = markdownBuilder.build(conversation, metadata, {
+  const strippedMetadata = { ...metadata, summary: "", keywords: [] }
+  const markdown = markdownBuilder.build(conversation, strippedMetadata, {
     contentFormat: obsidianConfig?.contentFormat || "web"
   })
 
@@ -574,7 +561,7 @@ async function finalizeExport(conversation: Conversation) {
 
   if (obsidianConfig.exportMethod === "uri") {
     const handler = new ObsidianURIHandler(obsidianConfig)
-    const result = await handler.exportToObsidian(markdown, metadata)
+    const result = await handler.exportToObsidian(markdown, strippedMetadata)
     showToast(result.message, result.success ? "success" : "warning")
   } else {
     downloadMarkdown(markdown, metadata.title)
@@ -625,8 +612,6 @@ async function exportDirect() {
           const handler = new ObsidianURIHandler(obsidianConfig)
           const result = await handler.exportToObsidian(listMarkdown, {
             title: conversation.title,
-            summary: `包含 ${(conversation.messages[0]?.content || "").split("### ").length - 1 || 0} 个视频`,
-            keywords: ["B站", "稍后看", "视频列表"],
             category: "娱乐",
             platform: "Bilibili",
             url: window.location.href
@@ -712,8 +697,6 @@ async function exportDirect() {
           const handler = new ObsidianURIHandler(obsidianConfig)
           const result = await handler.exportToObsidian(bilibiliMarkdown, {
             title: videoInfo.title,
-            summary: "",
-            keywords: videoInfo.tags,
             category: "娱乐",
             platform: "Bilibili",
             url: window.location.href
@@ -2105,6 +2088,12 @@ function initMemflow() {
   console.log("[Memflow] 初始化开始...")
 
   injectStyles()
+
+  // 初始化悬浮球（在所有页面上执行，内部会检查配置和禁用列表）
+  initFloatingBall({
+    exportDirect,
+    exportSmart
+  })
 
   if (isSmartClip()) {
     initHighlightFeature()
