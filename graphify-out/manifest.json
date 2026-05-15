@@ -1,0 +1,274 @@
+{
+  "D:\\Project\\PRwithAI\\Memflow\\debug-selectors.js": {
+    "mtime": 1773342495.8440962,
+    "hash": "86b03f90e3efcf47f54fcfbdcadc43e3"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\debug.js": {
+    "mtime": 1773342495.844637,
+    "hash": "0e640bdb34f306db7fe4aa6ab8a43332"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\vitest.config.ts": {
+    "mtime": 1773342495.860525,
+    "hash": "d16f8a95a277e0e7b22d280fd4754e5c"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\promo-video\\src\\MemflowUpdateVideo.tsx": {
+    "mtime": 1775898123.187809,
+    "hash": "7d5c7e711d8522f130b75c43bb4071e8"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\promo-video\\src\\ThreeConnect.tsx": {
+    "mtime": 1774713321.2286208,
+    "hash": "325205c38c38217deee4590a4135f106"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\Script\\generate_icons.py": {
+    "mtime": 1778721351.7135227,
+    "hash": "2d9e157100446aee1916ad71e9cc9132"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\scripts\\convert-icons.js": {
+    "mtime": 1773342495.8491924,
+    "hash": "d7e3c43526770e37f460de4266426066"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\background.ts": {
+    "mtime": 1773342495.850193,
+    "hash": "a2ffa52933faca1a3e4074a5b2da4448"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\options.tsx": {
+    "mtime": 1778761159.4241228,
+    "hash": "688b956a2803c3020030c7846ae301f0"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\popup.tsx": {
+    "mtime": 1778745608.0990705,
+    "hash": "6f42d725dfbfc077e13849d5b27abb06"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\config\\defaults.ts": {
+    "mtime": 1778746018.7915664,
+    "hash": "b323aff925e3099e4aadd29388d8c35f"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\config\\__tests__\\defaults.test.ts": {
+    "mtime": 1778746075.4495316,
+    "hash": "25696e95ad5d27633bc10ab9c335469f"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\floating-ball.ts": {
+    "mtime": 1778770353.2357054,
+    "hash": "01a7846a9376e7fc74f2a2ebb4779d42"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\index.ts": {
+    "mtime": 1778748029.9774177,
+    "hash": "1ba42074f9d186a9c0a4e263dd7ad118"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\adapters\\base-adapter.ts": {
+    "mtime": 1774021361.2329843,
+    "hash": "b4f59de0699cef30a4ba959482328d33"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\adapters\\bilibili.ts": {
+    "mtime": 1778461784.4199598,
+    "hash": "16cba9aab107300791d40de9a5253615"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\adapters\\chatgpt.ts": {
+    "mtime": 1774009342.4127946,
+    "hash": "1f94a3abca82ef8d830c2fa266003f8f"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\adapters\\deepseek.ts": {
+    "mtime": 1774010636.3281407,
+    "hash": "f0552c401b13b1dc2e08c4596b8f9c8a"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\adapters\\doubao.ts": {
+    "mtime": 1774022064.4829588,
+    "hash": "dcd778bfd5b719a31da34aaec4e8f09d"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\adapters\\gemini.ts": {
+    "mtime": 1776622081.7894154,
+    "hash": "ab48b46ba4a7f9065b45caf10ef81712"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\adapters\\index.ts": {
+    "mtime": 1778222518.6254635,
+    "hash": "97c847444322b1eed443f7ce285ec177"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\adapters\\kimi.ts": {
+    "mtime": 1774010636.33014,
+    "hash": "6de4179de5de6313aaf02631adc6a4af"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\adapters\\smartclip.ts": {
+    "mtime": 1778746864.7888362,
+    "hash": "af87fd835b3ac9b58791379734a537ea"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\adapters\\youtube.ts": {
+    "mtime": 1776598245.7852626,
+    "hash": "fac6aacdd579f6d6a59b25a2f96f4e40"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\adapters\\__tests__\\adapters.test.ts": {
+    "mtime": 1778461749.337349,
+    "hash": "45ca226a1278904a1a400b4458dbbb5b"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\adapters\\__tests__\\smartclip.test.ts": {
+    "mtime": 1778746872.157365,
+    "hash": "f0d9877d5bf732185ac4ed864fca2d37"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\__tests__\\content-script.test.ts": {
+    "mtime": 1776670807.1696398,
+    "hash": "44be373fc0699d43bc8d49daad091216"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\__tests__\\floating-ball.test.ts": {
+    "mtime": 1778690761.540473,
+    "hash": "78d303a67a2231bd94c134f140f896e6"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\contents\\__tests__\\long-content.test.ts": {
+    "mtime": 1778423508.7210913,
+    "hash": "1281d21e3c23ed049fca36a6aec9adf8"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\obsidian\\uri-handler.ts": {
+    "mtime": 1778383923.3108478,
+    "hash": "e5920d3daff7da58cd2edc711d2fe3b8"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\processing\\index.ts": {
+    "mtime": 1778747421.8066027,
+    "hash": "bd82bb7747aac422e93b6f16a65f4e26"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\processing\\markdown-builder.ts": {
+    "mtime": 1776539200.8554165,
+    "hash": "225e07918f5331ff148b9c59753fc868"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\processing\\metadata-generator.ts": {
+    "mtime": 1778747487.5513525,
+    "hash": "e2724f37039787ddbc143e167d2d4cc0"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\processing\\__tests__\\markdown-builder.test.ts": {
+    "mtime": 1773342495.8563483,
+    "hash": "b5522bd9260a9d06aa39eb07b998127d"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\services\\ai-api.ts": {
+    "mtime": 1778397160.1232736,
+    "hash": "98765b735be547323345da2020ad085a"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\services\\index.ts": {
+    "mtime": 1778414736.2616107,
+    "hash": "f90c3499dda85901416c8df46ef116cd"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\services\\memflow-helper.ts": {
+    "mtime": 1778461010.8329604,
+    "hash": "c433abb69ed882be7e2eb431c4e6a840"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\test\\setup.ts": {
+    "mtime": 1773342495.8585455,
+    "hash": "d0842ed738d60607ad60466cc7aa3382"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\types\\index.ts": {
+    "mtime": 1778746005.741285,
+    "hash": "86f8c0847f443bc81e84007bf9c78873"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\utils\\cleaner.ts": {
+    "mtime": 1773342495.8595324,
+    "hash": "d335bdc766052e2f89a3d963c75754f2"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\utils\\folder-history.ts": {
+    "mtime": 1778385869.9483562,
+    "hash": "bdaf2e3295b6fc48bdd6c00ffc31dea3"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\utils\\subtitle-compressor.ts": {
+    "mtime": 1773342613.804961,
+    "hash": "5685e13fdc9908359e558adde66db4e2"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\utils\\__tests__\\cleaner.test.ts": {
+    "mtime": 1773342495.8595324,
+    "hash": "3cdd717f779f8e44ca8ab3ee569a0f27"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\src\\utils\\__tests__\\folder-history.test.ts": {
+    "mtime": 1778383930.9540708,
+    "hash": "b7aefc4f2396b9187e029d0146c553a0"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\AGENTS.md": {
+    "mtime": 1778470776.448558,
+    "hash": "e9b8fc7bf9eb02fe3f424606182e8621"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\README.md": {
+    "mtime": 1778382969.9231994,
+    "hash": "e262dac9a5e22003285121e20fbbc73d"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\README_EN.md": {
+    "mtime": 1774009652.8538442,
+    "hash": "90fb407d41d7c48a14077fb5bbff0a69"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\docs\\superpowers\\plans\\2026-03-22-bilibili-video-summary-enhancements.md": {
+    "mtime": 1774144157.9580252,
+    "hash": "09cd33f0c33e531cbbd6dd401489c8de"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\promo-video\\public\\podcast_clean.txt": {
+    "mtime": 1775058471.0034173,
+    "hash": "c6e4223edd9bd1da2d4961e4ddd3b486"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\promo-video\\public\\podcast_text.txt": {
+    "mtime": 1775059113.441723,
+    "hash": "5d61730efa67730deeb10d4f372deaa5"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\promo-video\\videos\\memflow-update\\podcast.txt": {
+    "mtime": 1775045005.3034663,
+    "hash": "d690c658d365730104b1c7d7d12b2984"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\Script\\README.md": {
+    "mtime": 1773367734.9215784,
+    "hash": "ed7630bf5ce057113c54c2f3e84707ba"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\scripts\\icon-converter.html": {
+    "mtime": 1773342495.850193,
+    "hash": "dbd8aaa0087b650ad05e9db95dc8c995"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\assets\\floatball.svg": {
+    "mtime": 1778753397.418482,
+    "hash": "6d6b78a3bd07d24b91452ce5a1b7af3f"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\assets\\icon-128.png": {
+    "mtime": 1778755136.4933522,
+    "hash": "a6ea4394afad81a0fdde761224349cdc"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\assets\\icon-16.png": {
+    "mtime": 1778755136.5344975,
+    "hash": "e0bd73c934bab5a686969cad6eeeea64"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\assets\\icon-32.png": {
+    "mtime": 1778755259.0063171,
+    "hash": "30d248b99dbd1cdc82bfabebb025c3ce"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\assets\\icon-48.png": {
+    "mtime": 1778755136.4953525,
+    "hash": "62fd2d479967e3611c0997aa99541b63"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\assets\\icon.png": {
+    "mtime": 1778754918.605765,
+    "hash": "1c56a61efb111279fd0529023361ef29"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\assets\\icon.svg": {
+    "mtime": 1778755299.093505,
+    "hash": "29c5ecb9eb2969007d72b2bf0eb3f33d"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\docs\\donate.jpg": {
+    "mtime": 1778172235.2211723,
+    "hash": "d4ce91b0f39c3e7ad77f50e6e839d1c1"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\promo-video\\public\\\u9ad8\u4eae\u6279\u6ce8.png": {
+    "mtime": 1775055694.9692173,
+    "hash": "27069978d978eaecf06f5cb5e9780cd3"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\promo-video\\public\\background.mp3": {
+    "mtime": 1774151968.5173059,
+    "hash": "e5461207df097503f7ddefb0701b398f"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\promo-video\\public\\podcast_audio.wav": {
+    "mtime": 1775059367.7557206,
+    "hash": "6d7b4a5a642bc23cd064d2a75b58a7e3"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\promo-video\\public\\podcast_audio_old.wav": {
+    "mtime": 1775058909.39137,
+    "hash": "5a45b295f8bd679878699ff271cc511d"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\promo-video\\videos\\memflow-update\\output.mp4": {
+    "mtime": 1775045448.4825406,
+    "hash": "9d8f9bd3d2b1d04079a3d447ea093c45"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\promo-video\\videos\\memflow-update\\podcast_audio.mp3": {
+    "mtime": 1775045109.574071,
+    "hash": "f29f1c065ffc75549fb64915e8b5137f"
+  },
+  "D:\\Project\\PRwithAI\\Memflow\\promo-video\\videos\\memflow-update\\podcast_audio.wav": {
+    "mtime": 1775045129.6437705,
+    "hash": "302a61245ec01fc4e46e462328939f9f"
+  }
+}
